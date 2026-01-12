@@ -110,10 +110,12 @@ def format_val(val, status, mode):
     return f"🔴 {formatted}" if status == "Extrapolated" else formatted
 
 # --- 5. SIDEBAR ---
-st.image("logo.png", use_container_width=True)
-st.sidebar.title("Mr. Foamtastic")
-st.sidebar.caption("V6.3 | #Slack Ishan Gokhale")
-st.sidebar.divider()
+with st.sidebar:
+    # This bypasses st.logo and lets you treat it like a standard image
+    st.image("logo.png", use_container_width=True)
+    st.title("Mr. Foamtastic")
+    st.caption("V6.3 | #Slack Ishan Gokhale")
+    st.divider()
 
 unit_mode = st.sidebar.radio("Calculation Mode", ["Stress (MPa)", "Force (N)"])
 if unit_mode == "Force (N)":
