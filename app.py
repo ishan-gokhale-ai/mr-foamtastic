@@ -9,50 +9,34 @@ from io import BytesIO
 
 st.markdown("""
     <style>
-    /* 1. Reduce padding at the top of the sidebar */
-[data-testid="stSidebarContent"] {
-    padding-top: 1rem !important;
-}
-
-/* 2. Reduce space between all sidebar widgets */
-[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-    gap: 0.5rem !important;
-}
-
-/* 3. Tighten the Divider margins */
-[data-testid="stSidebar"] hr {
-    margin: 0.5rem 0px !important;
-}
-
-/* 4. Make Radio Buttons horizontal and compact */
-div.compact-radio div[role="radiogroup"] {
-    display: flex;
-    flex-direction: row;
-    gap: 15px;
-}
-
-/* 5. Reduce the font size of the labels for a professional 'industrial' look */
-[data-testid="stSidebar"] label {
-    font-size: 0.85rem !important;
-    font-weight: 600 !important;
-    margin-bottom: -5px !important;
-}
-    /* Industrial headers */
-    h1, h2, h3 {
-        font-weight: 800 !important;
-        color: #0E1117 !important;
-        letter-spacing: -0.5px;
+    /* 1. Remove padding from the entire sidebar container */
+    [data-testid="stSidebarContent"] > div:first-child {
+        padding-top: 2rem !important;
+        padding-bottom: 0rem !important;
     }
-    
-    /* Control panel sidebar */
-    [data-testid="stSidebar"] {
-        border-right: 1px solid #E6E9EF;
+
+    /* 2. Target the vertical block that holds all widgets */
+    /* This reduces the gap between EVERY item in the sidebar globally */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+        gap: 0rem !important;
     }
-    
-    /* Polished dataframes */
-    .stDataFrame {
-        border: 1px solid #F0F2F6;
-        border-radius: 8px;
+
+    /* 3. Reduce the margins around the standard Streamlit widgets */
+    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
+        margin-top: -10px !important;
+        padding-top: 0px !important;
+        padding-bottom: 5px !important;
+    }
+
+    /* 4. Shrink the horizontal rules (st.divider) */
+    [data-testid="stSidebar"] hr {
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* 5. Make labels sit closer to their inputs */
+    [data-testid="stSidebar"] label {
+        margin-bottom: -15px !important;
     }
     </style>
     """, unsafe_allow_html=True)
