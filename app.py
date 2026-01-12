@@ -270,9 +270,9 @@ with tab_select:
                     gridcolor='#F0F2F6', ticks="outside"
                 ),
                 legend=dict(
-                    bgcolor="rgba(255,255,255,0.8)",
-                    bordercolor="Black",
-                    borderwidth=1
+                    bgcolor="rgba(255,255,255,0)",
+                    bordercolor="rgba(0,0,0,0)",
+                    orientation="h",yanchor="top", y=-0.2,xanchor="center",x=0.5
                 )
             )
             
