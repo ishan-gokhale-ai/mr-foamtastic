@@ -10,10 +10,10 @@ from io import BytesIO
 st.set_page_config(
     layout="wide", 
     page_title="Mr. Foamtastic", 
-    page_icon="logo1.jpeg"  # Ensure this file is in your GitHub root
+    page_icon="logo1.png"  # Ensure this file is in your GitHub root
 )
 
-st.logo("logo.jpeg", size="large")
+st.logo("logo.png", size="large")
 
 st.markdown("""
     <style>
