@@ -377,13 +377,6 @@ with tab_explore:
                     })
                 st.toast("Stage exported!")
 
-        for idx, item in enumerate(st.session_state['explore_stage']):
-            c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
-            st.session_state['explore_stage'][idx]['custom_name'] = c_e1.text_input(f"Foam Name {idx+1}", value=item['custom_name'], key=f"exp_name_{idx}")
-            c_e2.write(f"({item['row']['Model']})")
-            if c_e3.button("❌", key=f"rm_exp_{idx}"):
-                st.session_state['explore_stage'].pop(idx); st.rerun()
-
 with tab_export:
     st.header("Finalize Selection Report")
     if st.session_state['export_basket']:
