@@ -143,8 +143,8 @@ with tab_explore:
         if st.session_state['explore_stage']:
             fig_exp = go.Figure()
             
-            # Add axis labels
-            fig_exp.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified")
+            # Graph visual improvements
+            fig_exp.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified", xaxis=dict(tickmode='linear', tick0=0, dtick=0.2,ticks="outside",tickwidth=2,showgrid=True,gridcolor='LightGrey'),yaxis=dict(ticks="outside",showgrid="True",gridcolor='LightGrey'))
 
             ref_gap = st.session_state['explore_stage'][0]['gap']
             fig_exp.add_vrect(x0=ref_gap - e_tol, x1=ref_gap + e_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
@@ -219,8 +219,8 @@ with tab_select:
 
         fig_sel = go.Figure()
         
-        # Add axis labels
-        fig_sel.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified")
+         # Graph visual improvements
+        fig_sel.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified", xaxis=dict(tickmode='linear', tick0=0, dtick=0.2,ticks="outside",tickwidth=2,showgrid=True,gridcolor='LightGrey'),yaxis=dict(ticks="outside",showgrid="True",gridcolor='LightGrey'))
         
         fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
         px_range = np.linspace(0.1, 4.0, 200)
