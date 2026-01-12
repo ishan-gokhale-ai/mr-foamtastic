@@ -9,7 +9,34 @@ from io import BytesIO
 
 st.markdown("""
     <style>
-    
+    /* 1. Reduce padding at the top of the sidebar */
+[data-testid="stSidebarContent"] {
+    padding-top: 1rem !important;
+}
+
+/* 2. Reduce space between all sidebar widgets */
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+    gap: 0.5rem !important;
+}
+
+/* 3. Tighten the Divider margins */
+[data-testid="stSidebar"] hr {
+    margin: 0.5rem 0px !important;
+}
+
+/* 4. Make Radio Buttons horizontal and compact */
+div.compact-radio div[role="radiogroup"] {
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
+}
+
+/* 5. Reduce the font size of the labels for a professional 'industrial' look */
+[data-testid="stSidebar"] label {
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    margin-bottom: -5px !important;
+}
     /* Industrial headers */
     h1, h2, h3 {
         font-weight: 800 !important;
