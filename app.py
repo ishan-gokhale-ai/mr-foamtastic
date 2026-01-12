@@ -145,8 +145,8 @@ c_max_in = st.sidebar.number_input("Max Compression %", value=70, step=1)
 tab_explore, tab_select, tab_export = st.tabs(["EXPLORE", "SELECT", "EXPORT"])
 
 with tab_explore:
-    st.header("Failure Analysis & Simulation")
-    e_tol = st.number_input("System Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol")
+    st.header("Foam Explorer")
+    st.caption("Select a foam from the dropdown menus to check CFD")
     exp_col1, exp_col2 = st.columns([1, 2])
     
     with exp_col1:
@@ -155,7 +155,8 @@ with tab_explore:
         e_series = st.selectbox("Series", sorted(df[df['Manufacturer'] == e_mfr]['Series'].unique()))
         e_model = st.selectbox("Model", sorted(df[(df['Manufacturer'] == e_mfr) & (df['Series'] == e_series)]['Model'].unique()))
         e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap")
-        
+        e_tol = st.number_input("System Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol")
+
         if st.button("➕ Add to Stage"):
             row = df[df['Model'] == e_model].iloc[0]
             st.session_state['explore_stage'].append({"row": row, "gap": e_gap, "custom_name": e_model})
