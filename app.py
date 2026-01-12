@@ -225,7 +225,7 @@ with tab_select:
         for r in results:
             col1, col2, col3 = st.columns([3, 2, 2])
             col1.write(f"**{r['Model']}**")
-            foam_label = col2.text_input("Foam Name", key=f"fn_sel_{r['Model']}", placeholder="e.g. Battery Buffer")
+            foam_label = col2.text_input("Foam Name", key=f"fn_sel_{r['Model']}", placeholder="e.g. FCAM B2B")
             if col3.button("Add to Export", key=f"sb_sel_{r['Model']}"):
                 st.session_state['export_basket'].append({
                     "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
