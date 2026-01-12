@@ -251,7 +251,30 @@ with tab_select:
             st.subheader("Performance Curves")
             fig_sel = go.Figure()
             # ... (Keep your graph layout logic here) ...
-            fig_sel.update_layout(template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
+            fig_sel.update_layout(
+                template="plotly_white",  # Perfect for screenshots
+                hovermode="x unified",
+                margin=dict(l=20, r=20, t=40, b=20), # Tight margins for better screenshots
+                xaxis_title="<b>Gap (mm)</b>", # Bold titles pop more in reports
+                yaxis_title=f"<b>{unit_mode}</b>",
+                
+                # Custom color palette matching your logo bubbles
+                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
+                
+                xaxis=dict(
+                    showline=True, linewidth=2, linecolor='black',
+                    gridcolor='#F0F2F6', dtick=0.2, ticks="outside"
+                ),
+                yaxis=dict(
+                    showline=True, linewidth=2, linecolor='black',
+                    gridcolor='#F0F2F6', ticks="outside"
+                ),
+                legend=dict(
+                    bgcolor="rgba(255,255,255,0.8)",
+                    bordercolor="Black",
+                    borderwidth=1
+                )
+            )
             
             fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
             px_range = np.linspace(0.1, 4.0, 200)
