@@ -142,9 +142,12 @@ with tab_explore:
     with exp_col2:
         if st.session_state['explore_stage']:
             fig_exp = go.Figure()
+            
+            # Add axis labels
+            fig_exp.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified")
+
             ref_gap = st.session_state['explore_stage'][0]['gap']
             fig_exp.add_vrect(x0=ref_gap - e_tol, x1=ref_gap + e_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
-            
             stage_table = []
             for item in st.session_state['explore_stage']:
                 row, g, cname = item['row'], item['gap'], item['custom_name']
@@ -215,13 +218,16 @@ with tab_select:
         st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
 
         fig_sel = go.Figure()
+        
+        # Add axis labels
+        fig_sel.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified")
+        
         fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
         px_range = np.linspace(0.1, 4.0, 200)
         for r in results:
             py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
             fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
         st.plotly_chart(fig_sel, use_container_width=True)
-
         for r in results:
             col1, col2, col3 = st.columns([3, 2, 2])
             col1.write(f"**{r['Model']}**")
