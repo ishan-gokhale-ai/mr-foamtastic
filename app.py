@@ -7,12 +7,6 @@ from io import BytesIO
 
 # --- 0. LOOK AND FEEL ---
 
-st.set_page_config(
-    layout="wide", 
-    page_title="Mr. Foamtastic", 
-    page_icon="logo1.png"  # Ensure this file is in your GitHub root
-)
-
 st.logo("logo.png", size="large")
 
 st.markdown("""
@@ -75,7 +69,7 @@ if not check_password():
     st.stop()
 
 # --- 2. CONFIGURATION & STATE ---
-st.set_page_config(layout="wide", page_title="Mr. Foamtastic", page_icon="🧪")
+st.set_page_config(layout="wide", page_title="Mr. Foamtastic", page_icon="logo1.png")
 
 if 'export_basket' not in st.session_state:
     st.session_state['export_basket'] = []
