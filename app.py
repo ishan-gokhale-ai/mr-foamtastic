@@ -184,8 +184,83 @@ v_max_in = st.sidebar.number_input(f"Max {unit_mode}", value=v_def_max, format="
 c_min_in = st.sidebar.number_input("Min Compression %", value=20, step=1)
 c_max_in = st.sidebar.number_input("Max Compression %", value=70, step=1)
 
-# --- 6. TABS (EXPLORE, SELECT, EXPORT) ---
-tab_explore, tab_select, tab_export = st.tabs(["EXPLORE", "SELECT", "EXPORT"])
+# --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
+
+tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
+
+with tab_select:
+    st.header("Foam recommendation engine")
+    
+    # 1. Input Controls at the top
+    s_col1, s_col2 = st.columns(2)
+    with s_col1:
+        s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
+    with s_col2:
+        s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
+
+    # 2. Filter Logic (Same as before)
+    mask = (df['Manufacturer'].isin(sel_mfrs)) & (df['thickness'] >= t_min_in) & (df['thickness'] <= t_max_in)
+    if want_cond: mask &= (df['Conductive'] == True)
+    if want_psa: mask &= (df['PSA'] == True)
+    filtered_df = df[mask]
+    
+    results = []
+    for _, row in filtered_df.iterrows():
+        vn, sn = get_value_with_status(row, s_gap, unit_mode, area, False)
+        comp = ((row['thickness'] - s_gap) / row['thickness']) * 100
+        if sn == "Interpolated" and v_min_in <= vn <= v_max_in and c_min_in <= comp <= c_max_in:
+            v_min, s_min = get_value_with_status(row, s_gap - s_tol, unit_mode, area, True)
+            v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
+            results.append({
+                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk (mm)": row['thickness'],
+                "Nom Gap (mm)": s_gap, f"Nom {unit_mode}": vn, "v_min": v_min, "s_min": s_min,
+                "v_max": v_max, "s_max": s_max, "row_ref": row
+            })
+
+    # 3. Layout: Table on Left, Graph on Right
+    if results:
+        res_col_left, res_col_right = st.columns([2, 3]) # Adjust ratio as needed
+        
+        with res_col_left:
+            st.subheader("Results Table")
+            disp_res = []
+            for r in results:
+                disp_res.append({
+                    "Vendor": r['Vendor'], "Model": r['Model'], "Thk": f"{r['Thk (mm)']:.3f}",
+                    f"Nom {unit_mode.split()[0]}": format_val(r[f"Nom {unit_mode}"], "Interpolated", unit_mode)
+                })
+            st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
+            
+            # Export controls moved here to stay with the table
+            st.divider()
+            st.subheader("Add to Export")
+            for r in results:
+                c1, c2 = st.columns([3, 2])
+                foam_label = c1.text_input(f"Name for {r['Model']}", key=f"fn_sel_{r['Model']}", label_visibility="collapsed", placeholder=r['Model'])
+                if c2.button("➕ Add", key=f"sb_sel_{r['Model']}", use_container_width=True):
+                    st.session_state['export_basket'].append({
+                        "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
+                        "Thk (mm)": round(r['Thk (mm)'], 3), "Nom Gap (mm)": round(r['Nom Gap (mm)'], 3), 
+                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode}"], 3),
+                        "Min Gap (mm)": round(r['Nom Gap (mm)'] - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
+                        "Max Gap (mm)": round(r['Nom Gap (mm)'] + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
+                    })
+                    st.toast(f"Added {r['Model']}!")
+
+        with res_col_right:
+            st.subheader("Performance Curves")
+            fig_sel = go.Figure()
+            # ... (Keep your graph layout logic here) ...
+            fig_sel.update_layout(template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
+            
+            fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
+            px_range = np.linspace(0.1, 4.0, 200)
+            for r in results:
+                py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
+                fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
+            st.plotly_chart(fig_sel, use_container_width=True)
+    else:
+        st.info("No foams match your current search criteria.")
 
 with tab_explore:
     st.header("Foam Explorer")
@@ -278,80 +353,6 @@ with tab_explore:
                         "Max Gap (mm)": round(g + e_tol, 3), f"Max Gap {unit_mode}": round(v_max, 3)
                     })
                 st.toast("Stage exported!")
-
-with tab_select:
-    st.header("Search & Selection")
-    
-    # 1. Input Controls at the top
-    s_col1, s_col2 = st.columns(2)
-    with s_col1:
-        s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
-    with s_col2:
-        s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
-
-    # 2. Filter Logic (Same as before)
-    mask = (df['Manufacturer'].isin(sel_mfrs)) & (df['thickness'] >= t_min_in) & (df['thickness'] <= t_max_in)
-    if want_cond: mask &= (df['Conductive'] == True)
-    if want_psa: mask &= (df['PSA'] == True)
-    filtered_df = df[mask]
-    
-    results = []
-    for _, row in filtered_df.iterrows():
-        vn, sn = get_value_with_status(row, s_gap, unit_mode, area, False)
-        comp = ((row['thickness'] - s_gap) / row['thickness']) * 100
-        if sn == "Interpolated" and v_min_in <= vn <= v_max_in and c_min_in <= comp <= c_max_in:
-            v_min, s_min = get_value_with_status(row, s_gap - s_tol, unit_mode, area, True)
-            v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
-            results.append({
-                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk (mm)": row['thickness'],
-                "Nom Gap (mm)": s_gap, f"Nom {unit_mode}": vn, "v_min": v_min, "s_min": s_min,
-                "v_max": v_max, "s_max": s_max, "row_ref": row
-            })
-
-    # 3. Layout: Table on Left, Graph on Right
-    if results:
-        res_col_left, res_col_right = st.columns([2, 3]) # Adjust ratio as needed
-        
-        with res_col_left:
-            st.subheader("Results Table")
-            disp_res = []
-            for r in results:
-                disp_res.append({
-                    "Vendor": r['Vendor'], "Model": r['Model'], "Thk": f"{r['Thk (mm)']:.3f}",
-                    f"Nom {unit_mode.split()[0]}": format_val(r[f"Nom {unit_mode}"], "Interpolated", unit_mode)
-                })
-            st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
-            
-            # Export controls moved here to stay with the table
-            st.divider()
-            st.subheader("Add to Export")
-            for r in results:
-                c1, c2 = st.columns([3, 2])
-                foam_label = c1.text_input(f"Name for {r['Model']}", key=f"fn_sel_{r['Model']}", label_visibility="collapsed", placeholder=r['Model'])
-                if c2.button("➕ Add", key=f"sb_sel_{r['Model']}", use_container_width=True):
-                    st.session_state['export_basket'].append({
-                        "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
-                        "Thk (mm)": round(r['Thk (mm)'], 3), "Nom Gap (mm)": round(r['Nom Gap (mm)'], 3), 
-                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode}"], 3),
-                        "Min Gap (mm)": round(r['Nom Gap (mm)'] - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
-                        "Max Gap (mm)": round(r['Nom Gap (mm)'] + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
-                    })
-                    st.toast(f"Added {r['Model']}!")
-
-        with res_col_right:
-            st.subheader("Performance Curves")
-            fig_sel = go.Figure()
-            # ... (Keep your graph layout logic here) ...
-            fig_sel.update_layout(template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
-            
-            fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
-            px_range = np.linspace(0.1, 4.0, 200)
-            for r in results:
-                py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
-                fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
-            st.plotly_chart(fig_sel, use_container_width=True)
-    else:
-        st.info("No foams match your current search criteria.")
 
 with tab_export:
     st.header("Finalize Selection Report")
