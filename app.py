@@ -5,6 +5,35 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
+# ---0. LOOK AND FEEL ---
+st.markdown("""
+    <style>
+    /* Make headers feel more industrial/technical */
+    h1, h2, h3 {
+        font-weight: 800 !important;
+        color: #0E1117 !important;
+        letter-spacing: -0.5px;
+    }
+    /* Style the sidebar to feel more like a control panel */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid #E6E9EF;
+    }
+    /* Polish the dataframes for a cleaner look */
+    .stDataFrame {
+        border: 1px solid #F0F2F6;
+        border-radius: 8px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+#Favicon
+st.set_page_config(
+    layout="wide", 
+    page_title="Mr. Foamtastic", 
+    page_icon="logo1.jpeg"
+)
+#App logo
+st.logo("logo.jpeg", size="large")
+
 # --- 1. PASSWORD GATE ---
 def check_password():
     """Returns True if the user had the correct password."""
@@ -144,7 +173,30 @@ with tab_explore:
             fig_exp = go.Figure()
             
             # Graph visual improvements
-            fig_exp.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified", xaxis=dict(tickmode='linear', tick0=0, dtick=0.2,ticks="outside",tickwidth=2,showgrid=True,gridcolor='LightGrey'),yaxis=dict(ticks="outside",showgrid=True,gridcolor='LightGrey'))
+            fig_exp.update_layout(
+                template="plotly_white",  # Perfect for screenshots
+                hovermode="x unified",
+                margin=dict(l=20, r=20, t=40, b=20), # Tight margins for better screenshots
+                xaxis_title="<b>Gap (mm)</b>", # Bold titles pop more in reports
+                yaxis_title=f"<b>{unit_mode}</b>",
+                
+                # Custom color palette matching your logo bubbles
+                colorway=["#00C9FF", "#008DB3", "#4DDBFF", "#005F78"],
+                
+                xaxis=dict(
+                    showline=True, linewidth=2, linecolor='black',
+                    gridcolor='#F0F2F6', dtick=0.2, ticks="outside"
+                ),
+                yaxis=dict(
+                    showline=True, linewidth=2, linecolor='black',
+                    gridcolor='#F0F2F6', ticks="outside"
+                ),
+                legend=dict(
+                    bgcolor="rgba(255,255,255,0.8)",
+                    bordercolor="Black",
+                    borderwidth=1
+                )
+            )
 
             ref_gap = st.session_state['explore_stage'][0]['gap']
             fig_exp.add_vrect(x0=ref_gap - e_tol, x1=ref_gap + e_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
@@ -220,7 +272,30 @@ with tab_select:
         fig_sel = go.Figure()
         
          # Graph visual improvements
-        fig_sel.update_layout (xaxis_title="Gap (mm)", yaxis_title=unit_mode, legend_title="Foams", hovermode="x unified", xaxis=dict(tickmode='linear', tick0=0, dtick=0.2,ticks="outside",tickwidth=2,showgrid=True,gridcolor='LightGrey'),yaxis=dict(ticks="outside",showgrid=True,gridcolor='LightGrey'))
+        fig_sel.update_layout(
+            template="plotly_white",  # Perfect for screenshots
+            hovermode="x unified",
+            margin=dict(l=20, r=20, t=40, b=20), # Tight margins for better screenshots
+            xaxis_title="<b>Gap (mm)</b>", # Bold titles pop more in reports
+            yaxis_title=f"<b>{unit_mode}</b>",
+            
+            # Custom color palette matching your logo bubbles
+            colorway=["#00C9FF", "#008DB3", "#4DDBFF", "#005F78"],
+            
+            xaxis=dict(
+                showline=True, linewidth=2, linecolor='black',
+                gridcolor='#F0F2F6', dtick=0.2, ticks="outside"
+            ),
+            yaxis=dict(
+                showline=True, linewidth=2, linecolor='black',
+                gridcolor='#F0F2F6', ticks="outside"
+            ),
+            legend=dict(
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor="Black",
+                borderwidth=1
+            )
+        )
         
         fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
         px_range = np.linspace(0.1, 4.0, 200)
