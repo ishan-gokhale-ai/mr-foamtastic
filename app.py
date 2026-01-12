@@ -7,15 +7,8 @@ from io import BytesIO
 
 # --- 0. LOOK AND FEEL ---
 
-st.logo("logo.png", size="large")
-
 st.markdown("""
     <style>
-    /* Force the logo container to be more prominent */
-    [data-testid="stLogo"] {
-        height: 6rem; /* Increases the height of the logo area */
-        width: auto;
-    }
     
     /* Industrial headers */
     h1, h2, h3 {
@@ -117,6 +110,7 @@ def format_val(val, status, mode):
     return f"🔴 {formatted}" if status == "Extrapolated" else formatted
 
 # --- 5. SIDEBAR ---
+st.image("logo.png", use_container_width=True)
 st.sidebar.title("Mr. Foamtastic")
 st.sidebar.caption("V6.3 | #Slack Ishan Gokhale")
 st.sidebar.divider()
