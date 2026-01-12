@@ -5,34 +5,43 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
-# ---0. LOOK AND FEEL ---
+# --- 0. LOOK AND FEEL ---
+
+st.set_page_config(
+    layout="wide", 
+    page_title="Mr. Foamtastic", 
+    page_icon="logo1.jpeg"  # Ensure this file is in your GitHub root
+)
+
+st.logo("logo.jpeg", size="large")
+
 st.markdown("""
     <style>
-    /* Make headers feel more industrial/technical */
+    /* Force the logo container to be more prominent */
+    [data-testid="stLogo"] {
+        height: 6rem; /* Increases the height of the logo area */
+        width: auto;
+    }
+    
+    /* Industrial headers */
     h1, h2, h3 {
         font-weight: 800 !important;
         color: #0E1117 !important;
         letter-spacing: -0.5px;
     }
-    /* Style the sidebar to feel more like a control panel */
+    
+    /* Control panel sidebar */
     [data-testid="stSidebar"] {
         border-right: 1px solid #E6E9EF;
     }
-    /* Polish the dataframes for a cleaner look */
+    
+    /* Polished dataframes */
     .stDataFrame {
         border: 1px solid #F0F2F6;
         border-radius: 8px;
     }
     </style>
     """, unsafe_allow_html=True)
-#Favicon
-st.set_page_config(
-    layout="wide", 
-    page_title="Mr. Foamtastic", 
-    page_icon="logo1.jpeg"
-)
-#App logo
-st.logo("logo.jpeg", size="large")
 
 # --- 1. PASSWORD GATE ---
 def check_password():
@@ -173,6 +182,7 @@ with tab_explore:
             fig_exp = go.Figure()
             
             # Graph visual improvements
+            
             fig_exp.update_layout(
                 template="plotly_white",  # Perfect for screenshots
                 hovermode="x unified",
@@ -181,7 +191,7 @@ with tab_explore:
                 yaxis_title=f"<b>{unit_mode}</b>",
                 
                 # Custom color palette matching your logo bubbles
-                colorway=["#00C9FF", "#008DB3", "#4DDBFF", "#005F78"],
+                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"]
                 
                 xaxis=dict(
                     showline=True, linewidth=2, linecolor='black',
@@ -280,7 +290,7 @@ with tab_select:
             yaxis_title=f"<b>{unit_mode}</b>",
             
             # Custom color palette matching your logo bubbles
-            colorway=["#00C9FF", "#008DB3", "#4DDBFF", "#005F78"],
+            colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"]
             
             xaxis=dict(
                 showline=True, linewidth=2, linecolor='black',
