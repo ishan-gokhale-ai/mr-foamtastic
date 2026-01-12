@@ -113,7 +113,7 @@ def format_val(val, status, mode):
 with st.sidebar:
     # This bypasses st.logo and lets you treat it like a standard image
     st.image("logo.png", use_container_width=True)
-    st.title("Mr. Foamtastic")
+    #st.title("Mr. Foamtastic")
     st.caption("V6.3 | #Slack Ishan Gokhale")
     st.divider()
 
