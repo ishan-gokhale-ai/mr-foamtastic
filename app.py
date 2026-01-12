@@ -9,34 +9,42 @@ from io import BytesIO
 
 st.markdown("""
     <style>
-    /* 1. Remove padding from the entire sidebar container */
-    [data-testid="stSidebarContent"] > div:first-child {
-        padding-top: 2rem !important;
-        padding-bottom: 0rem !important;
+    /* 1. Reset the sidebar padding to be clean but not zero */
+    [data-testid="stSidebarContent"] {
+        padding-top: 1.5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
-    /* 2. Target the vertical block that holds all widgets */
-    /* This reduces the gap between EVERY item in the sidebar globally */
+    /* 2. Set a consistent, small vertical gap between widgets */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
-        gap: 0rem !important;
+        gap: 0.75rem !important;
     }
 
-    /* 3. Reduce the margins around the standard Streamlit widgets */
-    [data-testid="stSidebar"] [data-testid="stVerticalBlock"] > div {
-        margin-top: -10px !important;
-        padding-top: 0px !important;
-        padding-bottom: 5px !important;
+    /* 3. Style the labels to be closer to their inputs without overlapping */
+    [data-testid="stSidebar"] label {
+        margin-bottom: -5px !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        color: #31333F !important;
     }
 
-    /* 4. Shrink the horizontal rules (st.divider) */
+    /* 4. Tighten the Divider lines */
     [data-testid="stSidebar"] hr {
         margin-top: 0.5rem !important;
         margin-bottom: 0.5rem !important;
     }
 
-    /* 5. Make labels sit closer to their inputs */
-    [data-testid="stSidebar"] label {
-        margin-bottom: -15px !important;
+    /* 5. Fix the Radio Button alignment */
+    /* This ensures the 'Calculation Mode' doesn't stack on top of its label */
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] + div {
+        margin-top: 5px !important;
+    }
+
+    /* 6. Improve the Logo/Header spacing at the very top */
+    [data-testid="stSidebar"] h2 {
+        padding-top: 0.5rem !important;
+        margin-bottom: 0rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
