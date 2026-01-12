@@ -191,7 +191,7 @@ with tab_explore:
                 yaxis_title=f"<b>{unit_mode}</b>",
                 
                 # Custom color palette matching your logo bubbles
-                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"]
+                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
                 
                 xaxis=dict(
                     showline=True, linewidth=2, linecolor='black',
@@ -290,7 +290,7 @@ with tab_select:
             yaxis_title=f"<b>{unit_mode}</b>",
             
             # Custom color palette matching your logo bubbles
-            colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"]
+            colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
             
             xaxis=dict(
                 showline=True, linewidth=2, linecolor='black',
