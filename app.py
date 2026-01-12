@@ -46,6 +46,30 @@ st.markdown("""
         padding-top: 0.5rem !important;
         margin-bottom: 0rem !important;
     }
+    /* 7. Remove the massive gap at the top of the main page */
+    [data-testid="stAppViewBlockContainer"] {
+        padding-top: 2rem !important; /* Standard professional padding */
+        padding-left: 3rem !important;
+        padding-right: 3rem !important;
+    }
+
+    /* 8. Hide the default Streamlit header bar (removes top white strip) */
+    [data-testid="stHeader"] {
+        background: rgba(0,0,0,0);
+        height: 0rem !important;
+    }
+
+    /* 9. Tighten the Tab styling */
+    [data-testid="stTab"] {
+        font-weight: 700 !important;
+        font-size: 1rem !important;
+    }
+
+    /* 10. Fix sidebar logo alignment so it sits flush with the top */
+    [data-testid="stSidebarContent"] {
+        padding-top: 1rem !important;
+}
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -257,9 +281,15 @@ with tab_explore:
 
 with tab_select:
     st.header("Search & Selection")
-    s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
-    s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
+    
+    # 1. Input Controls at the top
+    s_col1, s_col2 = st.columns(2)
+    with s_col1:
+        s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
+    with s_col2:
+        s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
 
+    # 2. Filter Logic (Same as before)
     mask = (df['Manufacturer'].isin(sel_mfrs)) & (df['thickness'] >= t_min_in) & (df['thickness'] <= t_max_in)
     if want_cond: mask &= (df['Conductive'] == True)
     if want_psa: mask &= (df['PSA'] == True)
@@ -278,64 +308,50 @@ with tab_select:
                 "v_max": v_max, "s_max": s_max, "row_ref": row
             })
 
+    # 3. Layout: Table on Left, Graph on Right
     if results:
-        disp_res = []
-        for r in results:
-            disp_res.append({
-                "Vendor": r['Vendor'], "Model": r['Model'], "Thk (mm)": f"{r['Thk (mm)']:.3f}",
-                "Nom Gap (mm)": f"{r['Nom Gap (mm)']:.3f}", f"Nom {unit_mode}": format_val(r[f"Nom {unit_mode}"], "Interpolated", unit_mode),
-                "Min Gap (mm)": f"{s_gap - s_tol:.3f}", f"Min Gap {unit_mode}": format_val(r['v_min'], r['s_min'], unit_mode),
-                "Max Gap (mm)": f"{s_gap + s_tol:.3f}", f"Max Gap {unit_mode}": format_val(r['v_max'], r['s_max'], unit_mode)
-            })
-        st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
-
-        fig_sel = go.Figure()
+        res_col_left, res_col_right = st.columns([2, 3]) # Adjust ratio as needed
         
-         # Graph visual improvements
-        fig_sel.update_layout(
-            template="plotly_white",  # Perfect for screenshots
-            hovermode="x unified",
-            margin=dict(l=20, r=20, t=40, b=20), # Tight margins for better screenshots
-            xaxis_title="<b>Gap (mm)</b>", # Bold titles pop more in reports
-            yaxis_title=f"<b>{unit_mode}</b>",
-            
-            # Custom color palette matching your logo bubbles
-            colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
-            
-            xaxis=dict(
-                showline=True, linewidth=2, linecolor='black',
-                gridcolor='#F0F2F6', dtick=0.2, ticks="outside"
-            ),
-            yaxis=dict(
-                showline=True, linewidth=2, linecolor='black',
-                gridcolor='#F0F2F6', ticks="outside"
-            ),
-            legend=dict(
-                bgcolor="rgba(255,255,255,0.8)",
-                bordercolor="Black",
-                borderwidth=1
-            )
-        )
-        
-        fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
-        px_range = np.linspace(0.1, 4.0, 200)
-        for r in results:
-            py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
-            fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
-        st.plotly_chart(fig_sel, use_container_width=True)
-        for r in results:
-            col1, col2, col3 = st.columns([3, 2, 2])
-            col1.write(f"**{r['Model']}**")
-            foam_label = col2.text_input("Foam Name", key=f"fn_sel_{r['Model']}", placeholder="e.g. FCAM B2B")
-            if col3.button("Add to Export", key=f"sb_sel_{r['Model']}"):
-                st.session_state['export_basket'].append({
-                    "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
-                    "Thk (mm)": round(r['Thk (mm)'], 3), "Nom Gap (mm)": round(r['Nom Gap (mm)'], 3), 
-                    f"Nom {unit_mode}": round(r[f"Nom {unit_mode}"], 3),
-                    "Min Gap (mm)": round(r['Nom Gap (mm)'] - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
-                    "Max Gap (mm)": round(r['Nom Gap (mm)'] + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
+        with res_col_left:
+            st.subheader("Results Table")
+            disp_res = []
+            for r in results:
+                disp_res.append({
+                    "Vendor": r['Vendor'], "Model": r['Model'], "Thk": f"{r['Thk (mm)']:.3f}",
+                    f"Nom {unit_mode.split()[0]}": format_val(r[f"Nom {unit_mode}"], "Interpolated", unit_mode)
                 })
-                st.toast(f"Added {r['Model']}!")
+            st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
+            
+            # Export controls moved here to stay with the table
+            st.divider()
+            st.subheader("Add to Export")
+            for r in results:
+                c1, c2 = st.columns([3, 2])
+                foam_label = c1.text_input(f"Name for {r['Model']}", key=f"fn_sel_{r['Model']}", label_visibility="collapsed", placeholder=r['Model'])
+                if c2.button("➕ Add", key=f"sb_sel_{r['Model']}", use_container_width=True):
+                    st.session_state['export_basket'].append({
+                        "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
+                        "Thk (mm)": round(r['Thk (mm)'], 3), "Nom Gap (mm)": round(r['Nom Gap (mm)'], 3), 
+                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode}"], 3),
+                        "Min Gap (mm)": round(r['Nom Gap (mm)'] - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
+                        "Max Gap (mm)": round(r['Nom Gap (mm)'] + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
+                    })
+                    st.toast(f"Added {r['Model']}!")
+
+        with res_col_right:
+            st.subheader("Performance Curves")
+            fig_sel = go.Figure()
+            # ... (Keep your graph layout logic here) ...
+            fig_sel.update_layout(template="plotly_white", hovermode="x unified", margin=dict(l=10, r=10, t=30, b=10))
+            
+            fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
+            px_range = np.linspace(0.1, 4.0, 200)
+            for r in results:
+                py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
+                fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
+            st.plotly_chart(fig_sel, use_container_width=True)
+    else:
+        st.info("No foams match your current search criteria.")
 
 with tab_export:
     st.header("Finalize Selection Report")
