@@ -291,23 +291,66 @@ with tab_explore:
     exp_col1, exp_col2 = st.columns([1, 2])
     
     with exp_col1:
-        st.subheader("Add Foam to Stage")
+        st.subheader("Stage Management")
+    
+    # --- ADD FOAM SECTION (Inside Expander) ---
+    with st.expander("➕ Add New Foam to Stage", expanded=True):
         e_mfr = st.selectbox("Manufacturer", sorted(df['Manufacturer'].unique()))
         e_series = st.selectbox("Series", sorted(df[df['Manufacturer'] == e_mfr]['Series'].unique()))
         e_model = st.selectbox("Model", sorted(df[(df['Manufacturer'] == e_mfr) & (df['Series'] == e_series)]['Model'].unique()))
-        e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap")
-        e_tol = st.number_input("System Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol")
-
-        if st.button("➕ Add to Stage"):
-            row = df[df['Model'] == e_model].iloc[0]
-            st.session_state['explore_stage'].append({"row": row, "gap": e_gap, "custom_name": e_model})
         
-        for idx, item in enumerate(st.session_state['explore_stage']):
-            c_e1, c_e2, c_e3 = st.columns([2, 2, 1])
-            st.session_state['explore_stage'][idx]['custom_name'] = c_e1.text_input(f"Foam Name {idx+1}", value=item['custom_name'], key=f"exp_name_{idx}")
-            c_e2.write(f"({item['row']['Model']})")
-            if c_e3.button("❌", key=f"rm_exp_{idx}"):
-                st.session_state['explore_stage'].pop(idx); st.rerun()
+        # Use columns for numeric inputs to save space
+        ec1, ec2 = st.columns(2)
+        e_gap = ec1.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap")
+        e_tol = ec2.number_input("Tol (± mm)", value=0.100, step=0.005, format="%.3f", key="etol")
+
+        if st.button("Add to Stage", use_container_width=True, type="primary"):
+            row = df[df['Model'] == e_model].iloc[0]
+            st.session_state['explore_stage'].append({
+                "Custom Name": e_model, 
+                "Model": e_model, 
+                "Gap": e_gap, 
+                "row": row
+            })
+            st.rerun()
+
+    st.divider()
+
+    # --- EDIT/DELETE SECTION (Data Editor) ---
+    if st.session_state['explore_stage']:
+        st.write("**Active Stage Items**")
+        st.caption("Edit 'Custom Name' directly in the table. Select a row and hit 'Delete' to remove.")
+        
+        # Convert list of dicts to a clean DataFrame for editing
+        stage_df = pd.DataFrame(st.session_state['explore_stage'])
+        
+        # The Data Editor: allows direct editing and row deletion
+        edited_stage = st.data_editor(
+            stage_df[['Custom Name', 'Model', 'Gap']],
+            column_config={
+                "Model": st.column_config.Column(disabled=True), # Don't let them edit model here
+                "Gap": st.column_config.NumberColumn(format="%.3f mm")
+            },
+            num_rows="dynamic", # Enables the 'Delete' functionality
+            use_container_width=True,
+            key="stage_editor"
+        )
+
+        # Sync changes back to session state
+        # Note: This logic handles if they deleted or renamed items
+        if len(edited_stage) != len(st.session_state['explore_stage']):
+            # If rows were deleted, we need to match them back to original 'row' objects
+            new_stage = []
+            for _, edited_row in edited_stage.iterrows():
+                # Re-match the full data row based on the Model name
+                original_row_data = df[df['Model'] == edited_row['Model']].iloc[0]
+                new_stage.append({
+                    "row": original_row_data, 
+                    "gap": edited_row['Gap'], 
+                    "custom_name": edited_row['Custom Name']
+                })
+            st.session_state['explore_stage'] = new_stage
+            st.rerun()
 
     with exp_col2:
         if st.session_state['explore_stage']:
