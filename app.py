@@ -153,7 +153,6 @@ def format_val(val, status, mode):
     return f"🔴 {formatted}" if status == "Extrapolated" else formatted
 
 # --- 5. SIDEBAR ---
-# --- 5. SIDEBAR ---
 with st.sidebar:
     # 1. Header & Branding
     st.image("logo.png", use_container_width=True)
@@ -161,31 +160,30 @@ with st.sidebar:
     st.divider()
 
     # 2. Global Calculation Settings
-    with st.expander("🎯 Calculation Mode", expanded=True):
+    with st.expander("Stress vs Force Mode", expanded=False):
         unit_mode = st.radio(
             "Select Output Type", 
             ["Stress (MPa)", "Force (N)"],
-            help="Stress is Area-independent; Force requires Contact Area."
+            help="Stress is area-independent; Force requires contact area."
         )
         
         if unit_mode == "Force (N)":
-            area = st.number_input("Contact Area (mm²)", value=20.0, step=1.0, format="%.2f")
+            area = st.number_input("Contact area (mm²)", value=20.0, step=1.0, format="%.2f")
             v_def_min, v_def_max = 0.50, 2.00
         else:
             area = 1.0 
             v_def_min, v_def_max = 0.080, 0.120
 
     # 3. Database Filters (Material Properties)
-    with st.expander("📂 Material Database Filters", expanded=False):
+    with st.expander("📂 Material Database Filters", expanded=True):
         mfr_options = sorted(df['Manufacturer'].unique().tolist()) if not df.empty else []
         sel_mfrs = st.multiselect("Vendors", mfr_options, default=mfr_options)
         
-        c1, c2 = st.columns(2)
-        want_cond = c1.checkbox("Conductive", help="Filter for EMI/Grounding foams")
-        want_psa = c2.checkbox("With PSA", help="Filter for Pressure Sensitive Adhesive")
+        want_cond = st.checkbox("Conductive", help="Filter for EMI/Grounding foams")
+        want_psa = st.checkbox("With PSA", help="Filter for foams with inbuilt adhesive")
 
     # 4. Refinement Filters (Physical Limits)
-    with st.expander("🛠️ Performance Constraints", expanded=False):
+    with st.expander("🛠️ Performance Constraints", expanded=True):
         st.markdown("### Thickness (mm)")
         t_min_in = st.number_input("Min Thk", value=float(df['thickness'].min() if not df.empty else 0.0), format="%.3f", label_visibility="collapsed")
         t_max_in = st.number_input("Max Thk", value=float(df['thickness'].max() if not df.empty else 5.0), format="%.3f", label_visibility="collapsed")
@@ -198,10 +196,6 @@ with st.sidebar:
         c_col1, c_col2 = st.columns(2)
         c_min_in = c_col1.number_input("Min %", value=20, step=1)
         c_max_in = c_col2.number_input("Max %", value=70, step=1)
-
-    st.divider()
-    if st.button("♻️ Reset All Filters", use_container_width=True):
-        st.rerun()
 
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
