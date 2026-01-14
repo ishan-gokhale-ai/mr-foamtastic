@@ -153,36 +153,55 @@ def format_val(val, status, mode):
     return f"🔴 {formatted}" if status == "Extrapolated" else formatted
 
 # --- 5. SIDEBAR ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
-    # This bypasses st.logo and lets you treat it like a standard image
+    # 1. Header & Branding
     st.image("logo.png", use_container_width=True)
-    #st.title("Mr. Foamtastic")
     st.caption("V6.3 | #Slack Ishan Gokhale")
     st.divider()
 
-unit_mode = st.sidebar.radio("Calculation Mode", ["Stress (MPa)", "Force (N)"])
-if unit_mode == "Force (N)":
-    area = st.sidebar.number_input("Contact Area (mm²)", value=20.0, step=1.0)
-    v_def_min, v_def_max = 0.50, 2.00
-else:
-    area = 1.0 
-    v_def_min, v_def_max = 0.080, 0.120
+    # 2. Global Calculation Settings
+    with st.expander("🎯 Calculation Mode", expanded=True):
+        unit_mode = st.radio(
+            "Select Output Type", 
+            ["Stress (MPa)", "Force (N)"],
+            help="Stress is Area-independent; Force requires Contact Area."
+        )
+        
+        if unit_mode == "Force (N)":
+            area = st.number_input("Contact Area (mm²)", value=20.0, step=1.0, format="%.2f")
+            v_def_min, v_def_max = 0.50, 2.00
+        else:
+            area = 1.0 
+            v_def_min, v_def_max = 0.080, 0.120
 
-st.sidebar.divider()
-st.sidebar.header("Database Filters")
-mfr_options = sorted(df['Manufacturer'].unique().tolist()) if not df.empty else []
-sel_mfrs = st.sidebar.multiselect("Vendors", mfr_options, default=mfr_options)
-want_cond = st.sidebar.checkbox("Conductive Only")
-want_psa = st.sidebar.checkbox("With PSA Only")
+    # 3. Database Filters (Material Properties)
+    with st.expander("📂 Material Database Filters", expanded=False):
+        mfr_options = sorted(df['Manufacturer'].unique().tolist()) if not df.empty else []
+        sel_mfrs = st.multiselect("Vendors", mfr_options, default=mfr_options)
+        
+        c1, c2 = st.columns(2)
+        want_cond = c1.checkbox("Conductive", help="Filter for EMI/Grounding foams")
+        want_psa = c2.checkbox("With PSA", help="Filter for Pressure Sensitive Adhesive")
 
-st.sidebar.divider()
-st.sidebar.header("Refinement Filters")
-t_min_in = st.sidebar.number_input("Min Thickness (mm)", value=float(df['thickness'].min() if not df.empty else 0.0), format="%.3f")
-t_max_in = st.sidebar.number_input("Max Thickness (mm)", value=float(df['thickness'].max() if not df.empty else 5.0), format="%.3f")
-v_min_in = st.sidebar.number_input(f"Min {unit_mode}", value=v_def_min, format="%.3f" if unit_mode == "Stress (MPa)" else "%.2f")
-v_max_in = st.sidebar.number_input(f"Max {unit_mode}", value=v_def_max, format="%.3f" if unit_mode == "Stress (MPa)" else "%.2f")
-c_min_in = st.sidebar.number_input("Min Compression %", value=20, step=1)
-c_max_in = st.sidebar.number_input("Max Compression %", value=70, step=1)
+    # 4. Refinement Filters (Physical Limits)
+    with st.expander("🛠️ Performance Constraints", expanded=False):
+        st.markdown("### Thickness (mm)")
+        t_min_in = st.number_input("Min Thk", value=float(df['thickness'].min() if not df.empty else 0.0), format="%.3f", label_visibility="collapsed")
+        t_max_in = st.number_input("Max Thk", value=float(df['thickness'].max() if not df.empty else 5.0), format="%.3f", label_visibility="collapsed")
+        
+        st.markdown(f"### Target {unit_mode.split()[0]}")
+        v_min_in = st.number_input(f"Min {unit_mode.split()[0]}", value=v_def_min, format="%.3f" if unit_mode == "Stress (MPa)" else "%.2f")
+        v_max_in = st.number_input(f"Max {unit_mode.split()[0]}", value=v_def_max, format="%.3f" if unit_mode == "Stress (MPa)" else "%.2f")
+        
+        st.markdown("### Compression %")
+        c_col1, c_col2 = st.columns(2)
+        c_min_in = c_col1.number_input("Min %", value=20, step=1)
+        c_max_in = c_col2.number_input("Max %", value=70, step=1)
+
+    st.divider()
+    if st.button("♻️ Reset All Filters", use_container_width=True):
+        st.rerun()
 
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
