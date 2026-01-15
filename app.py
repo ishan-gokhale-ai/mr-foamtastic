@@ -272,28 +272,35 @@ with tab_select:
             key="selection_editor"
         )
 
-        # --- 5. Logic to Handle "Add to Export" ---
-        # We iterate through the EDITED dataframe to capture the user-provided names
+       # --- 5. Logic to Handle "Add to Export" with "Double-Click" Prevention ---
         for i, row in edited_df.iterrows():
-            if row["Add to Export"]:
-                # Retrieve the original row reference from the results list
+            # Create a unique key for this specific row's state
+            row_key = f"added_{row['Model']}_{i}"
+            
+            # Only add if the checkbox is checked AND we haven't already processed this click
+            if row["Add to Export"] and not st.session_state.get(row_key, False):
                 original_record = results[i]
                 
-                # Check for duplicates in basket
-                if not any(item['Model'] == original_record['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
-                    st.session_state['export_basket'].append({
-                        "Foam": row['Foam Name'], # This uses the user's input from the table
-                        "Vendor": original_record['Vendor'], 
-                        "Model": original_record['Model'],
-                        "Thk (mm)": round(original_record['Thk'], 3), 
-                        "Nom Gap (mm)": round(s_gap, 3), 
-                        f"Nom {unit_mode}": round(original_record[f"Nom {unit_mode.split()[0]}"], 3),
-                        "Min Gap (mm)": round(s_gap - s_tol, 3), 
-                        f"Min Gap {unit_mode}": round(original_record['v_min'], 3),
-                        "Max Gap (mm)": round(s_gap + s_tol, 3), 
-                        f"Max Gap {unit_mode}": round(original_record['v_max'], 3)
-                    })
-                    st.toast(f"✅ Added {row['Foam Name']} to Export Basket!")
+                st.session_state['export_basket'].append({
+                    "Foam": row["Foam Name"],
+                    "Vendor": original_record['Vendor'],
+                    "Model": original_record['Model'],
+                    "Thk (mm)": round(original_record['Thk'], 3),
+                    "Nom Gap (mm)": round(s_gap, 3),
+                    f"Nom {unit_mode}": round(original_record[f"Nom {unit_mode.split()[0]}"], 3),
+                    "Min Gap (mm)": round(s_gap - s_tol, 3),
+                    f"Min Gap {unit_mode}": round(original_record['v_min'], 3),
+                    "Max Gap (mm)": round(s_gap + s_tol, 3),
+                    f"Max Gap {unit_mode}": round(original_record['v_max'], 3)
+                })
+                
+                # Mark this specific row as "Already Added" for this session
+                st.session_state[row_key] = True
+                st.toast(f"✅ Added {row['Foam Name']}!")
+            
+            # If the user unchecks the box, reset the tracker so they can add it again later
+            elif not row["Add to Export"]:
+                st.session_state[row_key] = False
     else:
         st.info("No foams match your search criteria.")
 
@@ -467,55 +474,32 @@ with tab_export:
     st.header("Finalize Selection Report")
     
     if st.session_state['export_basket']:
-        # Convert basket to DataFrame
-        basket_df = pd.DataFrame(st.session_state['export_basket'])
-        
-        st.subheader("Selected Items")
-        st.caption("💡 To remove an item: Select the row and press 'Backspace' or 'Delete' on your keyboard.")
-
-        # --- INLINE REMOVAL VIA DATA EDITOR ---
-        # Using num_rows="dynamic" allows the user to delete rows directly
+        # We wrap the editor in a form or use a specific key to prevent instant re-runs
+        # num_rows="dynamic" allows the user to select a row and hit 'Delete'
         edited_basket = st.data_editor(
-            basket_df,
+            pd.DataFrame(st.session_state['export_basket']),
             use_container_width=True,
             hide_index=True,
-            num_rows="dynamic", # Enables the "Remove" functionality
-            column_config={
-                "Foam": st.column_config.TextColumn("Foam ID", width="medium"),
-                "Thk (mm)": st.column_config.NumberColumn("Thk", format="%.3f"),
-                # Add more column configs here to match your specific columns if needed
-            },
-            key="export_editor"
+            num_rows="dynamic", 
+            key="export_editor_final"
         )
 
-        # --- SYNC CHANGES ---
-        # If the user deleted a row in the editor, update the session state
-        if len(edited_basket) != len(basket_df):
+        # Update the basket only if the number of rows changed (a deletion happened)
+        if len(edited_basket) != len(st.session_state['export_basket']):
             st.session_state['export_basket'] = edited_basket.to_dict('records')
             st.rerun()
 
-        # --- EXCEL EXPORT ---
         st.divider()
-        c1, c2 = st.columns([2, 1])
         
-        with c1:
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                # We use edited_basket to ensure deletes are reflected in the file
-                edited_basket.to_excel(writer, index=False, sheet_name='FoamSelection')
-            
-            st.download_button(
-                label="📥 Download Final Excel Report",
-                data=output.getvalue(),
-                file_name="Mr_Foamtastic_Report.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-                type="primary"
-            )
+        # Download Button
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            pd.DataFrame(st.session_state['export_basket']).to_excel(writer, index=False)
         
-        with c2:
-            if st.button("🗑️ Clear All", use_container_width=True):
-                st.session_state['export_basket'] = []
-                st.rerun()
+        st.download_button("📥 Download Excel Report", output.getvalue(), "Foam_Report.xlsx", type="primary")
+        
+        if st.button("🗑️ Clear Entire Basket"):
+            st.session_state['export_basket'] = []
+            st.rerun()
     else:
-        st.info("Your basket is empty. Go to the SELECT or EXPLORE tabs to add foams.")
+        st.info("Basket is empty.")
