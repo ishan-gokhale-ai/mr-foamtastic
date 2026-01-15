@@ -207,7 +207,7 @@ with tab_select:
     # --- 1. Top Input Row ---
     s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
     with s_col1:
-        s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
+        s_gap = st.number_input("Target Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="sgap_s")
     with s_col2:
         s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
     with s_col3:
@@ -285,7 +285,7 @@ with tab_select:
             column_config={
                 "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
                 "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
-                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nom ({unit_label})", format="%.3f"),
+                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nom Gap ({unit_label})", format="%.3f"),
                 "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap ({unit_label})"),
                 "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap ({unit_label})"),
                 "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
