@@ -202,16 +202,19 @@ with st.sidebar:
 tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
 
 with tab_select:
-    st.header("Foam recommendation engine")
+    st.header("Foam Recommendation Engine")
     
-    # 1. Input Controls at the top
-    s_col1, s_col2 = st.columns(2)
+    # --- 1. Top Input Row ---
+    s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
     with s_col1:
         s_gap = st.number_input("Target Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="sgap_s")
     with s_col2:
         s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
+    with s_col3:
+        # A small KPI-style metric for context
+        st.metric("Units", unit_mode.split()[0], delta="Active")
 
-    # 2. Filter Logic (Same as before)
+    # --- 2. Calculation Logic ---
     mask = (df['Manufacturer'].isin(sel_mfrs)) & (df['thickness'] >= t_min_in) & (df['thickness'] <= t_max_in)
     if want_cond: mask &= (df['Conductive'] == True)
     if want_psa: mask &= (df['PSA'] == True)
@@ -225,78 +228,77 @@ with tab_select:
             v_min, s_min = get_value_with_status(row, s_gap - s_tol, unit_mode, area, True)
             v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
             results.append({
-                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk (mm)": row['thickness'],
-                "Nom Gap (mm)": s_gap, f"Nom {unit_mode}": vn, "v_min": v_min, "s_min": s_min,
-                "v_max": v_max, "s_max": s_max, "row_ref": row
+                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk": row['thickness'],
+                f"Nom {unit_mode.split()[0]}": vn, "v_min": v_min, "v_max": v_max, "row_ref": row,
+                "Add to Export": False # Initial state for the button column
             })
 
-    # 3. Layout: Table on Left, Graph on Right
     if results:
-        res_col_left, res_col_right = st.columns([2, 3]) # Adjust ratio as needed
-        
-        with res_col_left:
-            st.subheader("Results Table")
-            disp_res = []
-            for r in results:
-                disp_res.append({
-                    "Vendor": r['Vendor'], "Model": r['Model'], "Thk": f"{r['Thk (mm)']:.3f}",
-                    f"Nom {unit_mode.split()[0]}": format_val(r[f"Nom {unit_mode}"], "Interpolated", unit_mode)
-                })
-            st.dataframe(pd.DataFrame(disp_res).rename(index=lambda x: x + 1), use_container_width=True)
-            
-            # Export controls moved here to stay with the table
-            st.divider()
-            st.subheader("Add to Export")
-            for r in results:
-                c1, c2 = st.columns([3, 2])
-                foam_label = c1.text_input(f"Name for {r['Model']}", key=f"fn_sel_{r['Model']}", label_visibility="collapsed", placeholder=r['Model'])
-                if c2.button("➕ Add", key=f"sb_sel_{r['Model']}", use_container_width=True):
-                    st.session_state['export_basket'].append({
-                        "Foam": foam_label if foam_label else r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
-                        "Thk (mm)": round(r['Thk (mm)'], 3), "Nom Gap (mm)": round(r['Nom Gap (mm)'], 3), 
-                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode}"], 3),
-                        "Min Gap (mm)": round(r['Nom Gap (mm)'] - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
-                        "Max Gap (mm)": round(r['Nom Gap (mm)'] + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
-                    })
-                    st.toast(f"Added {r['Model']}!")
+        res_df = pd.DataFrame(results)
 
-        with res_col_right:
-            st.subheader("Performance Curves")
-            fig_sel = go.Figure()
-            # ... (Keep your graph layout logic here) ...
-            fig_sel.update_layout(
-                template="plotly_white",  # Perfect for screenshots
-                hovermode="x unified",
-                margin=dict(l=20, r=20, t=40, b=20), # Tight margins for better screenshots
-                xaxis_title="<b>Gap (mm)</b>", # Bold titles pop more in reports
-                yaxis_title=f"<b>{unit_mode}</b>",
-                
-                # Custom color palette matching your logo bubbles
-                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
-                
-                xaxis=dict(
-                    showline=True, linewidth=2, linecolor='black',
-                    gridcolor='#F0F2F6', dtick=0.2, ticks="outside"
-                ),
-                yaxis=dict(
-                    showline=True, linewidth=2, linecolor='black',
-                    gridcolor='#F0F2F6', ticks="outside"
-                ),
-                legend=dict(
-                    bgcolor="rgba(255,255,255,0)",
-                    bordercolor="rgba(0,0,0,0)",
-                    orientation="h",yanchor="top", y=-0.2,xanchor="center",x=0.5
+        # --- 3. Full Width Hero Graph ---
+        st.subheader("Performance Visualization")
+        fig_sel = go.Figure()
+        fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0, annotation_text="Tolerance Zone", annotation_position="top left")
+        
+        px_range = np.linspace(0.1, 4.0, 200)
+        for _, r in res_df.iterrows():
+            py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
+            fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
+        
+        fig_sel.update_layout(
+            template="plotly_white", height=450, margin=dict(l=10, r=10, t=30, b=10),
+            xaxis_title="Gap (mm)", yaxis_title=unit_mode, hovermode="x unified"
+        )
+        st.plotly_chart(fig_sel, use_container_width=True)
+
+        st.divider()
+
+        # --- 4. Interactive Data Table with Button Column ---
+        st.subheader("Compatible Foams")
+        
+        # Configuration for the modern data editor
+        event = st.data_editor(
+            res_df.drop(columns=['row_ref']), # Hide the raw data object
+            column_config={
+                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
+                f"Nom {unit_mode.split()[0]}": st.column_config.NumberColumn(format="%.3f"),
+                "v_min": st.column_config.NumberColumn(f"Min ({s_gap-s_tol}mm)", format="%.3f"),
+                "v_max": st.column_config.NumberColumn(f"Max ({s_gap+s_tol}mm)", format="%.3f"),
+                "Add to Export": st.column_config.CheckboxColumn(
+                    "Add to Export",
+                    help="Click to add this foam to your final report basket",
+                    default=False,
                 )
-            )
-            
-            fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
-            px_range = np.linspace(0.1, 4.0, 200)
-            for r in results:
-                py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
-                fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
-            st.plotly_chart(fig_sel, use_container_width=True)
+            },
+            disabled=["Vendor", "Model", "Thk", f"Nom {unit_mode.split()[0]}", "v_min", "v_max"],
+            use_container_width=True,
+            hide_index=True,
+            key="selection_editor"
+        )
+
+        # --- 5. Logic to Handle "Add to Export" from Table ---
+        # We check which row was "checked" in the data editor
+        for i, row in event.iterrows():
+            if row["Add to Export"]:
+                # Retrieve the full data using the index from the original results
+                r = results[i]
+                
+                # Check if already in basket to avoid duplicates
+                if not any(item['Model'] == r['Model'] and item['Thk (mm)'] == r['Thk'] for item in st.session_state['export_basket']):
+                    st.session_state['export_basket'].append({
+                        "Foam": r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
+                        "Thk (mm)": round(r['Thk'], 3), "Nom Gap (mm)": round(s_gap, 3), 
+                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode.split()[0]}"], 3),
+                        "Min Gap (mm)": round(s_gap - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
+                        "Max Gap (mm)": round(s_gap + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
+                    })
+                    st.toast(f"✅ Added {r['Model']} to Export Basket!")
+                    # Optional: reset the checkbox state would require a rerun, 
+                    # but for now, the toast confirms the action.
+
     else:
-        st.info("No foams match your current search criteria.")
+        st.info("No foams match your current search criteria. Try adjusting the filters in the sidebar.")
 
 with tab_explore:
     st.header("Foam Explorer")
