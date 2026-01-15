@@ -267,13 +267,16 @@ with tab_select:
         
         edited_df = st.data_editor(
             pd.DataFrame(results).drop(columns=['row_ref']), 
+         # Extract the base unit label (Stress or Force) for the headers
+        mode_label = unit_mode.split()[0] # Result: "Stress" or "Force"
+
             column_config={
-                "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
-                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
-                f"Nom {unit_mode.split()[0]}": st.column_config.NumberColumn(format="%.3f"),
-                "Min Gap Val": st.column_config.TextColumn(f"Min ({s_gap-s_tol}mm)"),
-                "Max Gap Val": st.column_config.TextColumn(f"Max ({s_gap+s_tol}mm)"),
-                "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
+            "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
+            "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
+            f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nominal Gap", format="%.3f"),
+            "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap ({unit_mode.split('(')[1].replace(')', '')})"),
+            "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap ({unit_mode.split('(')[1].replace(')', '')})"),
+            "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
             disabled=["Vendor", "Model", "Thk", f"Nom {unit_mode.split()[0]}", "Min Gap Val", "Max Gap Val"],
             use_container_width=True,
