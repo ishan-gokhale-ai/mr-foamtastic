@@ -89,7 +89,7 @@ def check_password():
     if "password_correct" not in st.session_state:
         # First run, show input for password.
         st.set_page_config(page_title="Mr. Foamtastic Login", page_icon="🔒")
-        st.title("🔒 Mr. Foamtastic {APP_VERSION}")
+        st.title(f"🔒 Mr. Foamtastic {APP_VERSION}")
         st.text_input("Enter Team Password", type="password", on_change=password_entered, key="password")
         st.info("Contact Ishan Gokhale for access.")
         return False
@@ -158,7 +158,7 @@ def format_val(val, status, mode):
 with st.sidebar:
     # 1. Header & Branding
     st.image("logo.png", use_container_width=True)
-    st.caption("{APP_VERSION} | #Slack Ishan Gokhale")
+    st.caption(f"{APP_VERSION} | #Slack Ishan Gokhale")
     st.divider()
 
     # 2. Global Calculation Settings
