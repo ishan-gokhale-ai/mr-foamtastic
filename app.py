@@ -219,6 +219,10 @@ with tab_select:
     if want_psa: mask &= (df['PSA'] == True)
     filtered_df = df[mask]
     
+    # Helper for dynamic headers
+    mode_label = unit_mode.split()[0]  # "Stress" or "Force"
+    unit_label = unit_mode.split('(')[1].replace(')', '')  # "MPa" or "N"
+    
     results = []
     for _, row in filtered_df.iterrows():
         vn, sn = get_value_with_status(row, s_gap, unit_mode, area, False)
@@ -229,16 +233,16 @@ with tab_select:
             v_min, s_min = get_value_with_status(row, s_gap - s_tol, unit_mode, area, True)
             v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
             
-            # Format display values with warning icons for extrapolation
+            # Format display strings with ⚠️ warning for extrapolation
             d_min = f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}"
             d_max = f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}"
 
             results.append({
-                "Foam Name": row['Model'], # Default name
+                "Foam Name": row['Model'], 
                 "Vendor": row['Manufacturer'], 
                 "Model": row['Model'], 
                 "Thk": row['thickness'],
-                f"Nom {unit_mode.split()[0]}": vn, 
+                f"Nom {mode_label}": vn,  # Dynamic key for table mapping
                 "Min Gap Val": d_min, 
                 "Max Gap Val": d_max, 
                 "row_ref": row,
@@ -249,36 +253,44 @@ with tab_select:
         # --- 3. Full-Width Performance Chart ---
         st.subheader("Performance Visualization")
         fig_sel = go.Figure()
-        fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0, annotation_text="Tol Zone", annotation_position="top left")
+        fig_sel.add_vrect(
+            x0=s_gap - s_tol, x1=s_gap + s_tol, 
+            fillcolor="rgba(100,100,100,0.1)", line_width=0, 
+            annotation_text="Tolerance Zone", annotation_position="top left"
+        )
         
         px_range = np.linspace(0.1, 4.0, 200)
         for r in results:
             py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
             fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
         
-        fig_sel.update_layout(template="plotly_white", height=400, margin=dict(l=10, r=10, t=30, b=10), hovermode="x unified", legend=dict(orientation="h", y=-0.2))
+        fig_sel.update_layout(
+            template="plotly_white", height=400, 
+            margin=dict(l=10, r=10, t=30, b=10), 
+            hovermode="x unified",
+            xaxis_title="Gap (mm)",
+            yaxis_title=unit_mode,
+            legend=dict(orientation="h", y=-0.2)
+        )
         st.plotly_chart(fig_sel, use_container_width=True)
 
         st.divider()
 
         # --- 4. Interactive Data Table ---
         st.subheader("Compatible Foams")
-        st.caption("💡 Edit **Foam Name** to customize ID. Values marked ⚠️ are extrapolated from lab data.")
+        st.caption(f"💡 Values marked ⚠️ are extrapolated. Units: {unit_label}")
         
         edited_df = st.data_editor(
             pd.DataFrame(results).drop(columns=['row_ref']), 
-         # Extract the base unit label (Stress or Force) for the headers
-        mode_label = unit_mode.split()[0] # Result: "Stress" or "Force"
-
             column_config={
-            "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
-            "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
-            f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nominal Gap", format="%.3f"),
-            "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap ({unit_mode.split('(')[1].replace(')', '')})"),
-            "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap ({unit_mode.split('(')[1].replace(')', '')})"),
-            "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
+                "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
+                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
+                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nom ({unit_label})", format="%.3f"),
+                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap"),
+                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap"),
+                "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
-            disabled=["Vendor", "Model", "Thk", f"Nom {unit_mode.split()[0]}", "Min Gap Val", "Max Gap Val"],
+            disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
             use_container_width=True,
             hide_index=True,
             key="selection_editor"
@@ -286,33 +298,35 @@ with tab_select:
 
         # --- 5. State-Safe Add Logic ---
         for i, row in edited_df.iterrows():
-            # Unique key to track if THIS row in THIS specific search has been added
-            row_id = f"add_state_{row['Model']}_{i}"
+            # Unique session state key for this row/search combo
+            add_key = f"added_{row['Model']}_{i}"
             
-            if row["Add to Export"] and not st.session_state.get(row_id, False):
+            if row["Add to Export"] and not st.session_state.get(add_key, False):
                 r_orig = results[i]
                 
-                st.session_state['export_basket'].append({
-                    "Foam": row["Foam Name"],
-                    "Vendor": r_orig['Vendor'],
-                    "Model": r_orig['Model'],
-                    "Thk (mm)": round(r_orig['Thk'], 3),
-                    "Nom Gap (mm)": round(s_gap, 3),
-                    f"Nom {unit_mode}": round(r_orig[f"Nom {unit_mode.split()[0]}"], 3),
-                    "Min Gap (mm)": round(s_gap - s_tol, 3),
-                    f"Min Gap {unit_mode}": r_orig['Min Gap Val'], # Stores the string with ⚠️
-                    "Max Gap (mm)": round(s_gap + s_tol, 3),
-                    f"Max Gap {unit_mode}": r_orig['Max Gap Val']
-                })
-                
-                st.session_state[row_id] = True
-                st.toast(f"✅ Added {row['Foam Name']}!")
+                # Check for duplicate in basket
+                if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
+                    st.session_state['export_basket'].append({
+                        "Foam": row["Foam Name"],
+                        "Vendor": r_orig['Vendor'],
+                        "Model": r_orig['Model'],
+                        "Thk (mm)": round(r_orig['Thk'], 3),
+                        "Nom Gap (mm)": round(s_gap, 3),
+                        f"Nom {unit_mode}": round(r_orig[f"Nom {mode_label}"], 3),
+                        "Min Gap (mm)": round(s_gap - s_tol, 3),
+                        f"Min Gap {unit_mode}": r_orig['Min Gap Val'], 
+                        "Max Gap (mm)": round(s_gap + s_tol, 3),
+                        f"Max Gap {unit_mode}": r_orig['Max Gap Val']
+                    })
+                    st.session_state[add_key] = True
+                    st.toast(f"✅ Added {row['Foam Name']}!")
             
             elif not row["Add to Export"]:
-                st.session_state[row_id] = False
+                st.session_state[add_key] = False
 
     else:
-        st.info("No foams match your search criteria. Adjust filters in the sidebar.")
+        st.info("No foams match your current search criteria. Try adjusting the sidebar filters.")
+
 
 with tab_explore:
     st.header("Foam Explorer")
