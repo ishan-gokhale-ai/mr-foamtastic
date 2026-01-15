@@ -286,8 +286,8 @@ with tab_select:
                 "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
                 "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
                 f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nom ({unit_label})", format="%.3f"),
-                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap"),
-                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap"),
+                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap ({unit_label})"),
+                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap ({unit_label})"),
                 "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
             disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
