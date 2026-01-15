@@ -5,6 +5,8 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
+APP_VERSION = "V6.4.1"
+
 # --- 0. LOOK AND FEEL ---
 
 st.markdown("""
@@ -87,7 +89,7 @@ def check_password():
     if "password_correct" not in st.session_state:
         # First run, show input for password.
         st.set_page_config(page_title="Mr. Foamtastic Login", page_icon="🔒")
-        st.title("🔒 Mr. Foamtastic V6.3")
+        st.title("🔒 Mr. Foamtastic {APP_VERSION}")
         st.text_input("Enter Team Password", type="password", on_change=password_entered, key="password")
         st.info("Contact Ishan Gokhale for access.")
         return False
@@ -156,7 +158,7 @@ def format_val(val, status, mode):
 with st.sidebar:
     # 1. Header & Branding
     st.image("logo.png", use_container_width=True)
-    st.caption("V6.3 | #Slack Ishan Gokhale")
+    st.caption("{APP_VERSION} | #Slack Ishan Gokhale")
     st.divider()
 
     # 2. Global Calculation Settings
