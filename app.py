@@ -280,7 +280,7 @@ with tab_select:
 
         # --- 4. Interactive Data Table ---
         st.subheader("Compatible Foams")
-        st.caption(f"💡 Values marked ⚠️ are extrapolated. Units: {unit_label}")
+        st.caption(f"Values marked ⚠️ are extrapolated. Units")
         
         edited_df = st.data_editor(
             pd.DataFrame(results).drop(columns=['row_ref']), 
