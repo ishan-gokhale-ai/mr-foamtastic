@@ -465,17 +465,57 @@ with tab_explore:
 
 with tab_export:
     st.header("Finalize Selection Report")
+    
     if st.session_state['export_basket']:
-        export_df = pd.DataFrame(st.session_state['export_basket'])
-        st.dataframe(export_df.rename(index=lambda x: x + 1), use_container_width=True)
+        # Convert basket to DataFrame
+        basket_df = pd.DataFrame(st.session_state['export_basket'])
         
-        for idx, _ in enumerate(st.session_state['export_basket']):
-            if st.button(f"❌ Remove Item {idx+1}", key=f"rm_final_{idx}"):
-                st.session_state['export_basket'].pop(idx); st.rerun()
+        st.subheader("Selected Items")
+        st.caption("💡 To remove an item: Select the row and press 'Backspace' or 'Delete' on your keyboard.")
+
+        # --- INLINE REMOVAL VIA DATA EDITOR ---
+        # Using num_rows="dynamic" allows the user to delete rows directly
+        edited_basket = st.data_editor(
+            basket_df,
+            use_container_width=True,
+            hide_index=True,
+            num_rows="dynamic", # Enables the "Remove" functionality
+            column_config={
+                "Foam": st.column_config.TextColumn("Foam ID", width="medium"),
+                "Thk (mm)": st.column_config.NumberColumn("Thk", format="%.3f"),
+                # Add more column configs here to match your specific columns if needed
+            },
+            key="export_editor"
+        )
+
+        # --- SYNC CHANGES ---
+        # If the user deleted a row in the editor, update the session state
+        if len(edited_basket) != len(basket_df):
+            st.session_state['export_basket'] = edited_basket.to_dict('records')
+            st.rerun()
+
+        # --- EXCEL EXPORT ---
+        st.divider()
+        c1, c2 = st.columns([2, 1])
         
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            export_df.to_excel(writer, index=False)
-        st.download_button("📥 Download Final Excel Report", output.getvalue(), "Mr_Foamtastic_Export.xlsx")
+        with c1:
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # We use edited_basket to ensure deletes are reflected in the file
+                edited_basket.to_excel(writer, index=False, sheet_name='FoamSelection')
+            
+            st.download_button(
+                label="📥 Download Final Excel Report",
+                data=output.getvalue(),
+                file_name="Mr_Foamtastic_Report.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                type="primary"
+            )
+        
+        with c2:
+            if st.button("🗑️ Clear All", use_container_width=True):
+                st.session_state['export_basket'] = []
+                st.rerun()
     else:
-        st.info("Basket is empty.")
+        st.info("Your basket is empty. Go to the SELECT or EXPLORE tabs to add foams.")
