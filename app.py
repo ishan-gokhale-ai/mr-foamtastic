@@ -211,7 +211,6 @@ with tab_select:
     with s_col2:
         s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
     with s_col3:
-        # A small KPI-style metric for context
         st.metric("Units", unit_mode.split()[0], delta="Active")
 
     # --- 2. Calculation Logic ---
@@ -228,9 +227,10 @@ with tab_select:
             v_min, s_min = get_value_with_status(row, s_gap - s_tol, unit_mode, area, True)
             v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
             results.append({
+                "Foam Name": row['Model'], # Default to Model name, but editable
                 "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk": row['thickness'],
                 f"Nom {unit_mode.split()[0]}": vn, "v_min": v_min, "v_max": v_max, "row_ref": row,
-                "Add to Export": False # Initial state for the button column
+                "Add to Export": False 
             })
 
     if results:
@@ -239,37 +239,32 @@ with tab_select:
         # --- 3. Full Width Hero Graph ---
         st.subheader("Performance Visualization")
         fig_sel = go.Figure()
-        fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0, annotation_text="Tolerance Zone", annotation_position="top left")
+        fig_sel.add_vrect(x0=s_gap - s_tol, x1=s_gap + s_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
         
         px_range = np.linspace(0.1, 4.0, 200)
         for _, r in res_df.iterrows():
             py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
             fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
         
-        fig_sel.update_layout(
-            template="plotly_white", height=450, margin=dict(l=10, r=10, t=30, b=10),
-            xaxis_title="Gap (mm)", yaxis_title=unit_mode, hovermode="x unified"
-        )
+        fig_sel.update_layout(template="plotly_white", height=400, margin=dict(l=10, r=10, t=30, b=10), hovermode="x unified")
         st.plotly_chart(fig_sel, use_container_width=True)
 
         st.divider()
 
-        # --- 4. Interactive Data Table with Button Column ---
+        # --- 4. Interactive Data Table with Editable Names ---
         st.subheader("Compatible Foams")
+        st.caption("💡 Edit the 'Foam Name' column to give it a custom ID before clicking 'Add'.")
         
         # Configuration for the modern data editor
-        event = st.data_editor(
-            res_df.drop(columns=['row_ref']), # Hide the raw data object
+        edited_df = st.data_editor(
+            res_df.drop(columns=['row_ref']), 
             column_config={
+                "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", help="Type a custom ID for your report"),
                 "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
                 f"Nom {unit_mode.split()[0]}": st.column_config.NumberColumn(format="%.3f"),
                 "v_min": st.column_config.NumberColumn(f"Min ({s_gap-s_tol}mm)", format="%.3f"),
                 "v_max": st.column_config.NumberColumn(f"Max ({s_gap+s_tol}mm)", format="%.3f"),
-                "Add to Export": st.column_config.CheckboxColumn(
-                    "Add to Export",
-                    help="Click to add this foam to your final report basket",
-                    default=False,
-                )
+                "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
             disabled=["Vendor", "Model", "Thk", f"Nom {unit_mode.split()[0]}", "v_min", "v_max"],
             use_container_width=True,
@@ -277,28 +272,30 @@ with tab_select:
             key="selection_editor"
         )
 
-        # --- 5. Logic to Handle "Add to Export" from Table ---
-        # We check which row was "checked" in the data editor
-        for i, row in event.iterrows():
+        # --- 5. Logic to Handle "Add to Export" ---
+        # We iterate through the EDITED dataframe to capture the user-provided names
+        for i, row in edited_df.iterrows():
             if row["Add to Export"]:
-                # Retrieve the full data using the index from the original results
-                r = results[i]
+                # Retrieve the original row reference from the results list
+                original_record = results[i]
                 
-                # Check if already in basket to avoid duplicates
-                if not any(item['Model'] == r['Model'] and item['Thk (mm)'] == r['Thk'] for item in st.session_state['export_basket']):
+                # Check for duplicates in basket
+                if not any(item['Model'] == original_record['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
                     st.session_state['export_basket'].append({
-                        "Foam": r['Model'], "Vendor": r['Vendor'], "Model": r['Model'],
-                        "Thk (mm)": round(r['Thk'], 3), "Nom Gap (mm)": round(s_gap, 3), 
-                        f"Nom {unit_mode}": round(r[f"Nom {unit_mode.split()[0]}"], 3),
-                        "Min Gap (mm)": round(s_gap - s_tol, 3), f"Min Gap {unit_mode}": round(r['v_min'], 3),
-                        "Max Gap (mm)": round(s_gap + s_tol, 3), f"Max Gap {unit_mode}": round(r['v_max'], 3)
+                        "Foam": row['Foam Name'], # This uses the user's input from the table
+                        "Vendor": original_record['Vendor'], 
+                        "Model": original_record['Model'],
+                        "Thk (mm)": round(original_record['Thk'], 3), 
+                        "Nom Gap (mm)": round(s_gap, 3), 
+                        f"Nom {unit_mode}": round(original_record[f"Nom {unit_mode.split()[0]}"], 3),
+                        "Min Gap (mm)": round(s_gap - s_tol, 3), 
+                        f"Min Gap {unit_mode}": round(original_record['v_min'], 3),
+                        "Max Gap (mm)": round(s_gap + s_tol, 3), 
+                        f"Max Gap {unit_mode}": round(original_record['v_max'], 3)
                     })
-                    st.toast(f"✅ Added {r['Model']} to Export Basket!")
-                    # Optional: reset the checkbox state would require a rerun, 
-                    # but for now, the toast confirms the action.
-
+                    st.toast(f"✅ Added {row['Foam Name']} to Export Basket!")
     else:
-        st.info("No foams match your current search criteria. Try adjusting the filters in the sidebar.")
+        st.info("No foams match your search criteria.")
 
 with tab_explore:
     st.header("Foam Explorer")
