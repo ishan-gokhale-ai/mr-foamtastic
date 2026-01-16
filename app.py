@@ -253,7 +253,7 @@ with tab_select:
     # --- 1. Top Input Row ---
     s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
     with s_col1:
-        s_gap = st.number_input("Target Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="sgap_s")
+        s_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="sgap_s")
     with s_col2:
         s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
     with s_col3:
@@ -303,7 +303,7 @@ with tab_select:
         fig_sel.add_vrect(
             x0=s_gap - s_tol, x1=s_gap + s_tol, 
             fillcolor="rgba(100,100,100,0.1)", line_width=0, 
-            annotation_text="Tolerance Zone", annotation_position="top left"
+            annotation_text="Gap tolerance", annotation_position="top left"
         )
         
         px_range = np.linspace(0.1, 4.0, 200)
@@ -473,7 +473,7 @@ with tab_explore:
         fig_exp.add_vrect(
             x0=e_gap - e_tol, x1=e_gap + e_tol, 
             fillcolor="rgba(100,100,100,0.1)", line_width=0,
-            annotation_text="Tolerance Zone", annotation_position="top left"
+            annotation_text="Gap tolerance", annotation_position="top left"
         )
 
         px_range = np.linspace(0.1, 4.0, 200)
