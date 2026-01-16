@@ -329,172 +329,176 @@ with tab_select:
     else:
         st.info("No foams match your current search criteria. Try adjusting the sidebar filters.")
 
-
 with tab_explore:
     st.header("Foam Explorer")
-    st.caption("Select a foam from the dropdown menus to check CFD")
+    st.caption("Search for specific foams to compare them side-by-side against a common gap target.")
     
-    # --- DATA SANITIZER: Fixes the KeyError by forcing lowercase keys ---
+    # --- 0. PREPARE SEARCH DATA ---
+    # Create "Vendor | Model" strings for the search box
+    df['Search_Label'] = df['Manufacturer'] + " | " + df['Model']
+    search_options = sorted(df['Search_Label'].unique().tolist())
+    
+    # Determine pre-selected items if user switches tabs and comes back
+    current_models = [item['model'] for item in st.session_state['explore_stage']]
+    default_selections = df[df['Model'].isin(current_models)]['Search_Label'].tolist()
+
+    # --- 1. TOP INPUTS (Unified Layout) ---
+    e_col1, e_col2, e_col3, e_col4 = st.columns([3, 1, 1, 1])
+    
+    with e_col1:
+        # The Smart Search Widget
+        selected_search_items = st.multiselect(
+            "Search & Add Foams", 
+            search_options, 
+            default=default_selections,
+            placeholder="Type vendor or model (e.g. 'Rogers' or '4701')...",
+            label_visibility="collapsed"
+        )
+    
+    with e_col2:
+        e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
+    with e_col3:
+        e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
+    with e_col4:
+        if st.button("🗑️ Clear Stage", use_container_width=True):
+             st.session_state['explore_stage'] = []
+             st.rerun()
+
+    # --- 2. LOGIC: SYNC WIDGET <-> SESSION STATE ---
+    # A. Parse current selection from widget
+    widget_models = [item.split(" | ")[1] for item in selected_search_items]
+
+    # B. REMOVE: Delete items from State that are no longer in Widget
+    st.session_state['explore_stage'] = [
+        item for item in st.session_state['explore_stage']
+        if item['model'] in widget_models
+    ]
+
+    # C. ADD: Add items to State that are in Widget but not yet in State
+    current_state_models = [item['model'] for item in st.session_state['explore_stage']]
+    
+    for item_str in selected_search_items:
+        model_name = item_str.split(" | ")[1]
+        if model_name not in current_state_models:
+            row_data = df[df['Model'] == model_name].iloc[0]
+            st.session_state['explore_stage'].append({
+                "custom_name": model_name,
+                "model": model_name,
+                "gap": e_gap, # Initial placeholder, though we use global e_gap for calcs
+                "row": row_data
+            })
+
+    # --- 3. VISUALIZATION & RESULTS ---
     if st.session_state['explore_stage']:
-        sanitized_stage = []
-        for item in st.session_state['explore_stage']:
-            # This logic looks for the old keys and maps them to the new ones
-            sanitized_item = {
-                "custom_name": item.get('custom_name') or item.get('Custom Name') or item.get('Model'),
-                "model": item.get('model') or item.get('Model'),
-                "gap": item.get('gap') or item.get('Gap') or 1.0,
-                "row": item.get('row')
-            }
-            sanitized_stage.append(sanitized_item)
-        st.session_state['explore_stage'] = sanitized_stage
-
-    exp_col1, exp_col2 = st.columns([1, 2])
-    
-    with exp_col1:
-        st.subheader("Stage Management")
         
-        with st.expander("➕ Add New Foam to Stage", expanded=True):
-            e_mfr = st.selectbox("Manufacturer", sorted(df['Manufacturer'].unique()))
-            e_series = st.selectbox("Series", sorted(df[df['Manufacturer'] == e_mfr]['Series'].unique()))
-            e_model = st.selectbox("Model", sorted(df[(df['Manufacturer'] == e_mfr) & (df['Series'] == e_series)]['Model'].unique()))
+        # --- A. Performance Chart ---
+        st.subheader("Performance Visualization")
+        
+        fig_exp = go.Figure()
+        
+        # Tolerance Zone Shading (Consistent with Select Tab)
+        fig_exp.add_vrect(
+            x0=e_gap - e_tol, x1=e_gap + e_tol, 
+            fillcolor="rgba(100,100,100,0.1)", line_width=0,
+            annotation_text="Tolerance Zone", annotation_position="top left"
+        )
+
+        px_range = np.linspace(0.1, 4.0, 200)
+        explore_results = []
+        
+        for item in st.session_state['explore_stage']:
+            row = item['row']
             
-            ec1, ec2 = st.columns(2)
-            e_gap = ec1.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap")
-            e_tol = ec2.number_input("Tol (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_input")
+            # Calculate values based on GLOBAL inputs (e_gap, e_tol)
+            vn, sn = get_value_with_status(row, e_gap, unit_mode, area, False)
+            v_min, s_min = get_value_with_status(row, e_gap - e_tol, unit_mode, area, True)
+            v_max, s_max = get_value_with_status(row, e_gap + e_tol, unit_mode, area, True)
+            
+            # Formatting
+            d_min = f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}"
+            d_max = f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}"
 
-            if st.button("Add to Stage", use_container_width=True, type="primary"):
-                row_data = df[df['Model'] == e_model].iloc[0]
-                st.session_state['explore_stage'].append({
-                    "custom_name": e_model, 
-                    "model": e_model, 
-                    "gap": e_gap, 
-                    "row": row_data
-                })
-                st.rerun()
+            explore_results.append({
+                "Foam Name": item['custom_name'],
+                "Vendor": row['Manufacturer'],
+                "Model": row['Model'],
+                "Thk": row['thickness'],
+                f"Nom {mode_label}": vn,
+                "Min Gap Val": d_min,
+                "Max Gap Val": d_max,
+                "Add to Export": False,
+                "row_ref": row
+            })
 
+            # Plot Trace
+            py = [get_value_with_status(row, tx, unit_mode, area, False)[0] for tx in px_range]
+            fig_exp.add_trace(go.Scatter(
+                x=px_range, 
+                y=[y if y > 0 else None for y in py], 
+                name=item['custom_name'], 
+                mode='lines'
+            ))
+
+        fig_exp.update_layout(
+            template="plotly_white", height=450,
+            margin=dict(l=10, r=10, t=30, b=10),
+            hovermode="x unified",
+            xaxis_title="Gap (mm)",
+            yaxis_title=unit_mode,
+            legend=dict(orientation="h", y=-0.2)
+        )
+        st.plotly_chart(fig_exp, use_container_width=True)
+        
         st.divider()
 
-        if st.session_state['explore_stage']:
-            st.write("**Active Stage Items**")
+        # --- B. Results Table (Interactive) ---
+        st.subheader("Simulation Results")
+        
+        edited_exp_df = st.data_editor(
+            pd.DataFrame(explore_results).drop(columns=['row_ref']),
+            column_config={
+                "Foam Name": st.column_config.TextColumn("Foam Name", width="medium"),
+                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
+                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} @ {e_gap:.2f}mm", format="%.3f"),
+                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap - e_tol:.2f}mm"),
+                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap + e_tol:.2f}mm"),
+                "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
+            },
+            disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
+            use_container_width=True,
+            hide_index=True,
+            key="explore_editor"
+        )
+
+        # --- C. Export Logic ---
+        for i, row in edited_exp_df.iterrows():
+            add_key = f"exp_added_{row['Model']}_{i}"
             
-            # Defensive DataFrame creation
-            stage_df = pd.DataFrame(st.session_state['explore_stage'])
-            
-            # Ensure the columns exist before slicing to prevent the KeyError
-            required_cols = ['custom_name', 'model', 'gap']
-            if all(col in stage_df.columns for col in required_cols):
-                editable_df = stage_df[required_cols]
+            if row["Add to Export"] and not st.session_state.get(add_key, False):
+                r_orig = explore_results[i]
                 
-                edited_stage = st.data_editor(
-                    editable_df,
-                    column_config={
-                        "custom_name": st.column_config.TextColumn("Foam Name"),
-                        "model": st.column_config.Column("Model", disabled=True),
-                        "gap": st.column_config.NumberColumn("Gap (mm)", format="%.3f")
-                    },
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    key="stage_editor"
-                )
-
-                # Sync changes back
-                if len(edited_stage) != len(st.session_state['explore_stage']) or not edited_stage.equals(editable_df):
-                    new_stage = []
-                    for _, edited_row in edited_stage.iterrows():
-                        model_val = edited_row.get('model')
-                        if model_val and pd.notna(model_val):
-                            matched_rows = df[df['Model'] == model_val]
-                            if not matched_rows.empty:
-                                new_stage.append({
-                                    "row": matched_rows.iloc[0], 
-                                    "gap": edited_row.get('gap', 1.0), 
-                                    "custom_name": edited_row.get('custom_name', model_val)
-                                })
-                    st.session_state['explore_stage'] = new_stage
-                    st.rerun()
-            
-            if st.button("🗑️ Clear Entire Stage", use_container_width=True):
-                st.session_state['explore_stage'] = []
-                st.rerun()
-
-    with exp_col2:
-        if not st.session_state['explore_stage']:
-            st.info("👈 Add a foam from the 'Stage Management' panel to begin your simulation.")
-        else:
-            fig_exp = go.Figure()
-            
-            fig_exp.update_layout(
-                template="plotly_white",
-                hovermode="x unified",
-                margin=dict(l=20, r=20, t=40, b=80),
-                xaxis_title="<b>Gap (mm)</b>",
-                yaxis_title=f"<b>{unit_mode}</b>",
-                colorway=["#00C9FF","#FF4B4B","#00D26A","#FF8700","#7030A0","#262730"],
-                xaxis=dict(showline=True, linewidth=2, linecolor='black', gridcolor='#F0F2F6', dtick=0.2, ticks="outside"),
-                yaxis=dict(showline=True, linewidth=2, linecolor='black', gridcolor='#F0F2F6', ticks="outside"),
-                legend=dict(orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5)
-            )
-
-            # Defensive Gap access
-            first_item = st.session_state['explore_stage'][0]
-            ref_gap = first_item.get('gap') or first_item.get('Gap') or 1.0
-            
-            fig_exp.add_vrect(x0=ref_gap - e_tol, x1=ref_gap + e_tol, fillcolor="rgba(100,100,100,0.1)", line_width=0)
-            
-            stage_table_data = []
-            px_range = np.linspace(0.1, 4.0, 200)
-
-            for item in st.session_state['explore_stage']:
-                # Re-sanitizing within loop to be safe
-                row = item.get('row')
-                g = item.get('gap') or item.get('Gap') or 1.0
-                cname = item.get('custom_name') or item.get('Custom Name') or "Unknown"
-                
-                if row is not None:
-                    vn, sn = get_value_with_status(row, g, unit_mode, area, False)
-                    v_min, s_min = get_value_with_status(row, g - e_tol, unit_mode, area, True)
-                    v_max, s_max = get_value_with_status(row, g + e_tol, unit_mode, area, True)
-                    
-                    stage_table_data.append({
-                        "Vendor": row['Manufacturer'], 
-                        "Foam": cname, 
-                        "Model": row['Model'], 
-                        "Thk (mm)": f"{row['thickness']:.3f}",
-                        "Nom Gap (mm)": f"{g:.3f}", 
-                        f"Nom {unit_mode}": format_val(vn, sn, unit_mode),
-                        "Min Gap (mm)": f"{g - e_tol:.3f}", 
-                        f"Min Gap {unit_mode}": format_val(v_min, s_min, unit_mode),
-                        "Max Gap (mm)": f"{g + e_tol:.3f}", 
-                        f"Max Gap {unit_mode}": format_val(v_max, s_max, unit_mode)
+                # Prevent duplicates in basket
+                if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
+                    st.session_state['export_basket'].append({
+                        "Foam": row["Foam Name"],
+                        "Vendor": r_orig['Vendor'],
+                        "Model": r_orig['Model'],
+                        "Thk (mm)": round(r_orig['Thk'], 3),
+                        "Nom Gap (mm)": round(e_gap, 3),
+                        f"Nom {unit_mode}": round(r_orig[f"Nom {mode_label}"], 3),
+                        "Min Gap (mm)": round(e_gap - e_tol, 3),
+                        f"Min Gap {unit_mode}": r_orig['Min Gap Val'], 
+                        "Max Gap (mm)": round(e_gap + e_tol, 3),
+                        f"Max Gap {unit_mode}": r_orig['Max Gap Val']
                     })
-                    
-                    py = [get_value_with_status(row, tx, unit_mode, area, False)[0] for tx in px_range]
-                    fig_exp.add_trace(go.Scatter(
-                        x=px_range, y=[y if y > 0 else None for y in py], 
-                        name=f"{cname} ({row['Model']})", mode='lines'
-                    ))
+                    st.session_state[add_key] = True
+                    st.toast(f"✅ Added {row['Foam Name']} to basket!")
             
-            st.plotly_chart(fig_exp, use_container_width=True)
-            if stage_table_data:
-                st.dataframe(pd.DataFrame(stage_table_data).rename(index=lambda x: x + 1), use_container_width=True)
-            
-            if st.button("📤 Add Stage to Export", use_container_width=True):
-                for item in st.session_state['explore_stage']:
-                    r = item.get('row')
-                    g = item.get('gap') or item.get('Gap') or 1.0
-                    cname = item.get('custom_name') or item.get('Custom Name') or "Unknown"
-                    if r is not None:
-                        v_n, s_n = get_value_with_status(r, g, unit_mode, area, False)
-                        v_min, s_min = get_value_with_status(r, g - e_tol, unit_mode, area, True)
-                        v_max, s_max = get_value_with_status(r, g + e_tol, unit_mode, area, True)
-                        st.session_state['export_basket'].append({
-                            "Foam": cname, "Vendor": r['Manufacturer'], "Model": r['Model'],
-                            "Thk (mm)": round(r['thickness'], 3), "Nom Gap (mm)": round(g, 3), 
-                            f"Nom {unit_mode}": round(v_n, 3),
-                            "Min Gap (mm)": round(g - e_tol, 3), f"Min Gap {unit_mode}": round(v_min, 3), 
-                            "Max Gap (mm)": round(g + e_tol, 3), f"Max Gap {unit_mode}": round(v_max, 3)
-                        })
-                st.toast("Stage added to Export Basket!")
+            elif not row["Add to Export"]:
+                st.session_state[add_key] = False
+
+    else:
+        st.info("👆 Use the search bar above to add foams for comparison.")
 
 with tab_export:
     st.header("Finalize Selection Report")
