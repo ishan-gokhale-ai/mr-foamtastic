@@ -464,7 +464,6 @@ with tab_explore:
     if st.session_state['explore_stage']:
         
         # --- A. Performance Chart (With Markers) ---
-        st.subheader("Performance Visualization")
         
         fig_exp = go.Figure()
         fig_exp.add_vrect(
