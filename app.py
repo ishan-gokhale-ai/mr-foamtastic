@@ -246,8 +246,9 @@ with col2:
 
 tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
 
+# --- TAB :SELECT ---
 with tab_select:
-    st.write("") # Small spacer
+    st.caption("Enter key design parameters for foam recommendations")
     
     # --- 1. Top Input Row ---
     s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
@@ -428,7 +429,6 @@ def clear_stage():
 # --- TAB: EXPLORE ---
 with tab_explore:
 
-    st.subheader("Foam Explorer") # Changed from Header to Subheader
     st.caption("Search for specific foams to compare them side-by-side against a common gap target.")
     
     # --- 0. PREPARE SEARCH DATA ---
@@ -567,7 +567,7 @@ with tab_explore:
 
 # --- TAB : EXPORT ---
 with tab_export:
-    st.header("Finalize Selection Report")
+    st.caption("Export foams in the table below to a .xlsx file.")
     
     if st.session_state['export_basket']:
         edited_basket = st.data_editor(
