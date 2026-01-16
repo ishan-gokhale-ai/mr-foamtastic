@@ -13,7 +13,7 @@ st.markdown("""
     <style>
     /* 1. Reset the sidebar padding */
     [data-testid="stSidebarContent"] {
-        padding-top: 1.5rem !important;
+        padding-top: 0rem !important; /* Move logo flush to top */
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -48,17 +48,18 @@ st.markdown("""
         margin-bottom: 0rem !important;
     }
     
-    /* 7. Main page padding */
+    /* 7. Main page padding - REMOVE WHITESPACE */
     [data-testid="stAppViewBlockContainer"] {
-        padding-top: 2rem !important;
+        padding-top: 2rem !important; /* Reduced to bring tabs up */
         padding-left: 3rem !important;
         padding-right: 3rem !important;
     }
 
-    /* 8. Hide header bar */
-    [data-testid="stHeader"] {
-        background: rgba(0,0,0,0);
-        height: 0rem !important;
+    /* 8. KILL THE HEADER & ICONS */
+    [data-testid="stHeader"], 
+    [data-testid="stToolbar"] {
+        display: none !important; /* Hides the hamburger menu and the top-right icons */
+        height: 0px !important;
     }
 
     /* 9. Tab styling */
@@ -66,13 +67,8 @@ st.markdown("""
         font-weight: 700 !important;
         font-size: 1rem !important;
     }
-
-    /* 10. Sidebar top alignment */
-    [data-testid="stSidebarContent"] {
-        padding-top: 1rem !important;
-    }
     
-    /* 11. Force Headers Left */
+    /* 10. Force Headers Left */
     [data-testid="stDataFrame"] th,
     [data-testid="stDataEditor"] th,
     div[data-testid="stColumnHeader"] {
@@ -81,6 +77,7 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+
 
 # --- 1. PASSWORD GATE ---
 def check_password():
