@@ -197,6 +197,7 @@ with st.sidebar:
     # st.image("logo.png", use_container_width=True)
     st.caption(f"{APP_VERSION} | #Slack Ishan Gokhale")
     st.divider()
+    st.write("")
 
     # 2. Global Calculation Settings
     with st.expander("Stress vs Force Mode", expanded=False):
@@ -208,7 +209,7 @@ with st.sidebar:
         
         if unit_mode == "Force (N)":
             area = st.number_input("Contact area (mm²)", value=20.0, step=1.0, format="%.2f")
-            v_def_min, v_def_max = 0.50, 2.00
+            v_def_min, v_def_max = 1.60, 2.40
         else:
             area = 1.0 
             v_def_min, v_def_max = 0.080, 0.120
@@ -424,8 +425,9 @@ def clear_stage():
     st.session_state['explore_stage'] = []
     st.session_state['search_widget'] = []
 
-# --- MAIN TAB CODE ---
+# --- TAB: EXPLORE ---
 with tab_explore:
+
     st.subheader("Foam Explorer") # Changed from Header to Subheader
     st.caption("Search for specific foams to compare them side-by-side against a common gap target.")
     
@@ -450,11 +452,13 @@ with tab_explore:
     
     st.write("") 
 
-    c_gap, c_tol, c_spacer, c_clear = st.columns([1, 1, 3, 1])
+    c_gap, c_tol, c_mode, c_spacer, c_clear = st.columns([1, 1, 1, 2, 1])
     with c_gap:
         e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
     with c_tol:
         e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
+    with c_mode:
+        st.metric("Calculation Mode", unit_mode.split()[0], delta="Active")
     with c_clear:
         st.write("") 
         st.write("") 
@@ -561,6 +565,7 @@ with tab_explore:
     else:
         st.info("Use the search bar to add foams for comparison.")
 
+# --- TAB : EXPORT ---
 with tab_export:
     st.header("Finalize Selection Report")
     
