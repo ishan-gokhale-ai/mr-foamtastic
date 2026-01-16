@@ -347,7 +347,7 @@ with tab_select:
 
         # --- 4. Interactive Data Table (Left Aligned via Strings) ---
         st.subheader("Compatible Foams")
-        st.caption(f"Values marked ⚠️ are extrapolated. Units: {unit_mode}")
+        st.caption("Values marked ⚠️ are extrapolated")
         
         # Display DF: Convert numbers to strings for Left Alignment
         display_df = pd.DataFrame(results).drop(columns=['row_ref'])
@@ -357,11 +357,11 @@ with tab_select:
         edited_df = st.data_editor(
             display_df, 
             column_config={
-                "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
-                "Thk": st.column_config.TextColumn("Thk (mm)"), # TextColumn = Left Aligned
-                f"Nom {mode_label}": st.column_config.TextColumn(f"{mode_label} at Nom ({unit_label})"),
-                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min ({unit_label})"),
-                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max ({unit_label})"),
+                "Foam Name": st.column_config.TextColumn("Foam name (Editable)", width="medium",default="",help="enter foam descriptor"),
+                "Thk": st.column_config.TextColumn("Thickness (mm)"),
+                f"Nom {mode_label}": st.column_config.TextColumn(f"{mode_label} at Nom gap ({unit_label})"),
+                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min gap ({unit_label})"),
+                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max gap ({unit_label})"),
                 "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
             disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
@@ -447,14 +447,14 @@ with tab_explore:
         search_options, 
         key="search_widget", 
         on_change=update_explore_stage,
-        placeholder="Type vendor or model (e.g. 'Rogers' or '4701')..."
+        placeholder="Type vendor or model (e.g. 'Poron' or '4701')..."
     )
     
     st.write("") 
 
     c_gap, c_tol, c_mode, c_spacer, c_clear = st.columns([1, 1, 1, 2, 1])
     with c_gap:
-        e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
+        e_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="egap_global")
     with c_tol:
         e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
     with c_mode:
