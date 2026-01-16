@@ -329,28 +329,66 @@ with tab_select:
     else:
         st.info("No foams match your current search criteria. Try adjusting the sidebar filters.")
 
+# --- HELPER: CALLBACK FUNCTION ---
+def update_explore_stage():
+    """
+    Callback to sync the search widget with the explore_stage data.
+    Runs immediately when the user adds/removes a tag.
+    """
+    # 1. Get the current tags from the widget
+    selection = st.session_state['search_widget']  # List of "Vendor | Model"
+    selected_models = [s.split(" | ")[1] for s in selection]
+    
+    # 2. Filter existing stage items (Remove deleted ones)
+    new_stage = [item for item in st.session_state['explore_stage'] if item['model'] in selected_models]
+    existing_models = [item['model'] for item in new_stage]
+    
+    # 3. Add new items
+    for s in selection:
+        model = s.split(" | ")[1]
+        if model not in existing_models:
+            # Find the row in the dataframe (df is global)
+            row = df[df['Model'] == model].iloc[0]
+            # Use the current global gap value if available, else 1.0
+            current_gap = st.session_state.get('egap_global', 1.0)
+            
+            new_stage.append({
+                "custom_name": model,
+                "model": model,
+                "gap": current_gap,
+                "row": row
+            })
+    
+    # 4. Commit back to session state
+    st.session_state['explore_stage'] = new_stage
+
 with tab_explore:
     st.header("Foam Explorer")
     st.caption("Search for specific foams to compare them side-by-side against a common gap target.")
     
     # --- 0. PREPARE SEARCH DATA ---
-    # Create "Vendor | Model" strings for the search box
     df['Search_Label'] = df['Manufacturer'] + " | " + df['Model']
     search_options = sorted(df['Search_Label'].unique().tolist())
     
-    # Determine pre-selected items if user switches tabs and comes back
-    current_models = [item['model'] for item in st.session_state['explore_stage']]
-    default_selections = df[df['Model'].isin(current_models)]['Search_Label'].tolist()
+    # --- 1. INITIALIZE WIDGET STATE ---
+    # We must ensure the widget's internal state matches the explore_stage 
+    # (e.g., if we switched tabs and came back)
+    if 'search_widget' not in st.session_state:
+        st.session_state['search_widget'] = [
+            f"{item['row']['Manufacturer']} | {item['model']}" 
+            for item in st.session_state['explore_stage']
+        ]
 
-    # --- 1. TOP INPUTS (Unified Layout) ---
+    # --- 2. TOP INPUTS ---
     e_col1, e_col2, e_col3, e_col4 = st.columns([3, 1, 1, 1])
     
     with e_col1:
-        # The Smart Search Widget
-        selected_search_items = st.multiselect(
+        # THE FIX: No 'default' param. We use 'key' and 'on_change'.
+        st.multiselect(
             "Search & Add Foams", 
             search_options, 
-            default=default_selections,
+            key="search_widget",  # Binds directly to st.session_state['search_widget']
+            on_change=update_explore_stage, # Runs logic BEFORE re-run
             placeholder="Type vendor or model (e.g. 'Rogers' or '4701')...",
             label_visibility="collapsed"
         )
@@ -360,33 +398,11 @@ with tab_explore:
     with e_col3:
         e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
     with e_col4:
+        # THE FIX: Clear both the data AND the widget key
         if st.button("🗑️ Clear Stage", use_container_width=True):
              st.session_state['explore_stage'] = []
+             st.session_state['search_widget'] = [] 
              st.rerun()
-
-    # --- 2. LOGIC: SYNC WIDGET <-> SESSION STATE ---
-    # A. Parse current selection from widget
-    widget_models = [item.split(" | ")[1] for item in selected_search_items]
-
-    # B. REMOVE: Delete items from State that are no longer in Widget
-    st.session_state['explore_stage'] = [
-        item for item in st.session_state['explore_stage']
-        if item['model'] in widget_models
-    ]
-
-    # C. ADD: Add items to State that are in Widget but not yet in State
-    current_state_models = [item['model'] for item in st.session_state['explore_stage']]
-    
-    for item_str in selected_search_items:
-        model_name = item_str.split(" | ")[1]
-        if model_name not in current_state_models:
-            row_data = df[df['Model'] == model_name].iloc[0]
-            st.session_state['explore_stage'].append({
-                "custom_name": model_name,
-                "model": model_name,
-                "gap": e_gap, # Initial placeholder, though we use global e_gap for calcs
-                "row": row_data
-            })
 
     # --- 3. VISUALIZATION & RESULTS ---
     if st.session_state['explore_stage']:
@@ -396,7 +412,6 @@ with tab_explore:
         
         fig_exp = go.Figure()
         
-        # Tolerance Zone Shading (Consistent with Select Tab)
         fig_exp.add_vrect(
             x0=e_gap - e_tol, x1=e_gap + e_tol, 
             fillcolor="rgba(100,100,100,0.1)", line_width=0,
@@ -409,12 +424,10 @@ with tab_explore:
         for item in st.session_state['explore_stage']:
             row = item['row']
             
-            # Calculate values based on GLOBAL inputs (e_gap, e_tol)
             vn, sn = get_value_with_status(row, e_gap, unit_mode, area, False)
             v_min, s_min = get_value_with_status(row, e_gap - e_tol, unit_mode, area, True)
             v_max, s_max = get_value_with_status(row, e_gap + e_tol, unit_mode, area, True)
             
-            # Formatting
             d_min = f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}"
             d_max = f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}"
 
@@ -430,7 +443,6 @@ with tab_explore:
                 "row_ref": row
             })
 
-            # Plot Trace
             py = [get_value_with_status(row, tx, unit_mode, area, False)[0] for tx in px_range]
             fig_exp.add_trace(go.Scatter(
                 x=px_range, 
@@ -451,7 +463,7 @@ with tab_explore:
         
         st.divider()
 
-        # --- B. Results Table (Interactive) ---
+        # --- B. Results Table ---
         st.subheader("Simulation Results")
         
         edited_exp_df = st.data_editor(
@@ -477,7 +489,6 @@ with tab_explore:
             if row["Add to Export"] and not st.session_state.get(add_key, False):
                 r_orig = explore_results[i]
                 
-                # Prevent duplicates in basket
                 if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
                     st.session_state['export_basket'].append({
                         "Foam": row["Foam Name"],
