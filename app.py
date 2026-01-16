@@ -70,7 +70,30 @@ st.markdown("""
     /* 10. Fix sidebar logo alignment so it sits flush with the top */
     [data-testid="stSidebarContent"] {
         padding-top: 1rem !important;
-}
+    }
+    /* 11. Force Table Headers to align Left */
+    [data-testid="stDataFrame"] th,
+    [data-testid="stDataEditor"] th,
+    div[data-testid="stColumnHeader"] {
+        text-align: left !important;
+        justify-content: flex-start !important;
+    }
+    
+    /* 12. Force ALL Table Cells to align Left (Numbers & Text) */
+    /* Target the cell container */
+    [data-testid="stDataFrame"] td,
+    [data-testid="stDataEditor"] td {
+        text-align: left !important;
+    }
+    
+    /* Target the inner flex container (Crucial for Numbers) */
+    [data-testid="stDataFrame"] td > div,
+    [data-testid="stDataEditor"] td > div,
+    [data-testid="stDataFrame"] [role="gridcell"] > div,
+    [data-testid="stDataEditor"] [role="gridcell"] > div {
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
 
     </style>
     """, unsafe_allow_html=True)
