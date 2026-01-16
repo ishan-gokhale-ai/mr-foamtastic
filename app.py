@@ -13,7 +13,7 @@ st.markdown("""
     <style>
     /* 1. Reset the sidebar padding */
     [data-testid="stSidebarContent"] {
-        padding-top: 0rem !important; /* Move logo flush to top */
+        padding-top: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -48,27 +48,31 @@ st.markdown("""
         margin-bottom: 0rem !important;
     }
     
-    /* 7. Main page padding - REMOVE WHITESPACE */
-    [data-testid="stAppViewBlockContainer"] {
-        padding-top: 2rem !important; /* Reduced to bring tabs up */
-        padding-left: 3rem !important;
-        padding-right: 3rem !important;
+    /* 7. Main page padding */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        margin-top: 0rem !important;
     }
-
+    
     /* 8. KILL THE HEADER & ICONS */
-    [data-testid="stHeader"], 
-    [data-testid="stToolbar"] {
-        display: none !important; /* Hides the hamburger menu and the top-right icons */
-        height: 0px !important;
+    header[data-testid="stHeader"] {
+        display: none !important;
+    }
+    
+    /* 9. Tighten Title Spacing */
+    h1 {
+        padding-top: 0rem !important;
+        padding-bottom: 0.5rem !important;
     }
 
-    /* 9. Tab styling */
+    /* 10. Tab styling */
     [data-testid="stTab"] {
         font-weight: 700 !important;
         font-size: 1rem !important;
     }
     
-    /* 10. Force Headers Left */
+    /* 11. Force Headers Left */
     [data-testid="stDataFrame"] th,
     [data-testid="stDataEditor"] th,
     div[data-testid="stColumnHeader"] {
@@ -217,10 +221,14 @@ with st.sidebar:
 
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
+# === CHANGE: Main Title moved OUT of the tab to fill the top gap ===
+st.title("Foam Recommendation Engine") 
+
 tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
 
 with tab_select:
-    st.header("Foam Recommendation Engine")
+    # Removed st.header() from here since it's now at the top
+    st.write("") # Small spacer
     
     # --- 1. Top Input Row ---
     s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
@@ -400,143 +408,8 @@ def clear_stage():
 
 # --- MAIN TAB CODE ---
 with tab_explore:
-    st.header("Foam Explorer")
+    st.subheader("Foam Explorer") # Changed from Header to Subheader
     st.caption("Search for specific foams to compare them side-by-side against a common gap target.")
-    
-    # --- 0. PREPARE SEARCH DATA ---
-    df['Search_Label'] = df['Manufacturer'] + " | " + df['Model']
-    search_options = sorted(df['Search_Label'].unique().tolist())
-    
-    if 'search_widget' not in st.session_state:
-        st.session_state['search_widget'] = [
-            f"{item['row']['Manufacturer']} | {item['model']}" 
-            for item in st.session_state['explore_stage']
-        ]
-
-    # --- 1. TOP INPUTS ---
-    st.multiselect(
-        "Search & Add Foams", 
-        search_options, 
-        key="search_widget", 
-        on_change=update_explore_stage,
-        placeholder="Type vendor or model (e.g. 'Rogers' or '4701')..."
-    )
-    
-    st.write("") 
-
-    c_gap, c_tol, c_spacer, c_clear = st.columns([1, 1, 3, 1])
-    with c_gap:
-        e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
-    with c_tol:
-        e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
-    with c_clear:
-        st.write("") 
-        st.write("") 
-        st.button("🗑️ Clear Stage", use_container_width=True, on_click=clear_stage)
-
-    # --- 2. VISUALIZATION & RESULTS ---
-    if st.session_state['explore_stage']:
-        
-        # --- A. Performance Chart (With Markers) ---
-        st.subheader("Performance Visualization")
-        
-        fig_exp = go.Figure()
-        fig_exp.add_vrect(
-            x0=e_gap - e_tol, x1=e_gap + e_tol, 
-            fillcolor="rgba(100,100,100,0.1)", line_width=0,
-            annotation_text="Tolerance Zone", annotation_position="top left"
-        )
-
-        px_range = np.linspace(0.1, 4.0, 200)
-        explore_results = []
-        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-        
-        for i, item in enumerate(st.session_state['explore_stage']):
-            color = colors[i % len(colors)]
-            row = item['row']
-            vn, sn = get_value_with_status(row, e_gap, unit_mode, area, False)
-            v_min, s_min = get_value_with_status(row, e_gap - e_tol, unit_mode, area, True)
-            v_max, s_max = get_value_with_status(row, e_gap + e_tol, unit_mode, area, True)
-            
-            d_min = f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}"
-            d_max = f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}"
-
-            explore_results.append({
-                "Foam Name": item['custom_name'],
-                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk": row['thickness'],
-                f"Nom {mode_label}": vn, "Min Gap Val": d_min, "Max Gap Val": d_max,
-                "Add to Export": False, "row_ref": row
-            })
-
-            # Curve
-            py = [get_value_with_status(row, tx, unit_mode, area, False)[0] for tx in px_range]
-            fig_exp.add_trace(go.Scatter(
-                x=px_range, y=[y if y > 0 else None for y in py], 
-                name=item['custom_name'], mode='lines', line=dict(color=color)
-            ))
-
-            # Markers
-            fig_exp.add_trace(go.Scatter(
-                x=[e_gap - e_tol, e_gap, e_gap + e_tol],
-                y=[v_min, vn, v_max],
-                mode='markers',
-                marker=dict(size=8, symbol=['triangle-right', 'circle', 'triangle-left'], color=color),
-                showlegend=False, hoverinfo='skip'
-            ))
-
-        fig_exp.update_layout(
-            template="plotly_white", height=450, margin=dict(l=10, r=10, t=30, b=10),
-            hovermode="x unified", xaxis_title="Gap (mm)", yaxis_title=unit_mode,
-            legend=dict(orientation="h", y=-0.2)
-        )
-        st.plotly_chart(fig_exp, use_container_width=True)
-        
-        st.divider()
-
-        # --- B. Results Table (Left Aligned via Strings) ---
-        st.subheader("Simulation Results")
-        
-        exp_display_df = pd.DataFrame(explore_results).drop(columns=['row_ref'])
-        exp_display_df['Thk'] = exp_display_df['Thk'].map('{:.3f}'.format)
-        exp_display_df[f"Nom {mode_label}"] = exp_display_df[f"Nom {mode_label}"].map('{:.3f}'.format)
-
-        edited_exp_df = st.data_editor(
-            exp_display_df,
-            column_config={
-                "Foam Name": st.column_config.TextColumn("Foam Name", width="medium"),
-                "Thk": st.column_config.TextColumn("Thk (mm)"),
-                f"Nom {mode_label}": st.column_config.TextColumn(f"{mode_label} @ {e_gap:.2f}mm"),
-                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap - e_tol:.2f}mm"),
-                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap + e_tol:.2f}mm"),
-                "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
-            },
-            disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
-            use_container_width=True, hide_index=True, key="explore_editor"
-        )
-
-        # --- C. Export Logic ---
-        for i, row in edited_exp_df.iterrows():
-            r_orig = explore_results[i] # Grab raw data
-            add_key = f"exp_added_{r_orig['Model']}_{i}"
-            
-            if row["Add to Export"] and not st.session_state.get(add_key, False):
-                if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
-                    st.session_state['export_basket'].append({
-                        "Foam": row["Foam Name"], "Vendor": r_orig['Vendor'], "Model": r_orig['Model'],
-                        "Thk (mm)": round(r_orig['Thk'], 3), "Nom Gap (mm)": round(e_gap, 3),
-                        f"Nom {unit_mode}": round(r_orig[f"Nom {mode_label}"], 3),
-                        "Min Gap (mm)": round(e_gap - e_tol, 3), f"Min Gap {unit_mode}": r_orig['Min Gap Val'], 
-                        "Max Gap (mm)": round(e_gap + e_tol, 3), f"Max Gap {unit_mode}": r_orig['Max Gap Val']
-                    })
-                    st.session_state[add_key] = True
-                    st.toast(f"✅ Added {row['Foam Name']} to basket!")
-            elif not row["Add to Export"]:
-                st.session_state[add_key] = False
-    else:
-        st.info("Use the search bar to add foams for comparison.")
-
-with tab_export:
-    st.header("Finalize Selection Report")
     
     if st.session_state['export_basket']:
         edited_basket = st.data_editor(
