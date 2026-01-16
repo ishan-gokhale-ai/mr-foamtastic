@@ -380,25 +380,38 @@ with tab_explore:
         ]
 
     # --- 2. TOP INPUTS ---
-    e_col1, e_col2, e_col3, e_col4 = st.columns([3, 1, 1, 1])
     
-    with e_col1:
-        # THE FIX: No 'default' param. We use 'key' and 'on_change'.
-        st.multiselect(
-            "Search & Add Foams", 
-            search_options, 
-            key="search_widget",  # Binds directly to st.session_state['search_widget']
-            on_change=update_explore_stage, # Runs logic BEFORE re-run
-            placeholder="Type vendor or model (e.g. 'Rogers' or '4701')...",
-            label_visibility="collapsed"
-        )
+    # ROW 1: Search Bar (Full Width)
+    # We place this outside of any 'st.columns' so it spans the whole width.
+    st.multiselect(
+        "Search & Add Foams", 
+        search_options, 
+        key="search_widget", 
+        on_change=update_explore_stage,
+        placeholder="Type vendor or model (e.g. 'Rogers' or '4701')...",
+        # I removed label_visibility="collapsed" so the user sees the label "Search & Add Foams"
+    )
     
-    with e_col2:
+    # Add a little vertical space
+    st.write("") 
+
+    # ROW 2: Controls (Gap, Tolerance, and Clear Button)
+    # We create columns just for these inputs now.
+    # [1, 1, 3, 1] means: Small, Small, Big Empty Space, Small
+    c_gap, c_tol, c_spacer, c_clear = st.columns([1, 1, 3, 1])
+    
+    with c_gap:
         e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
-    with e_col3:
+    
+    with c_tol:
         e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
-    with e_col4:
-        # THE FIX: Clear both the data AND the widget key
+    
+    # c_spacer is left empty to push the Clear button to the far right
+    
+    with c_clear:
+        # We add some whitespace so the button aligns with the text inputs (pushes it down slightly)
+        st.write("") 
+        st.write("") 
         if st.button("🗑️ Clear Stage", use_container_width=True):
              st.session_state['explore_stage'] = []
              st.session_state['search_widget'] = [] 
