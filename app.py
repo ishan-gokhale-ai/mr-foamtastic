@@ -326,10 +326,10 @@ with tab_select:
             p_max, _ = get_value_with_status(row_data, s_gap + s_tol, unit_mode, area, True)
 
             fig_sel.add_trace(go.Scatter(
-                x=[s_gap - s_tol, s_gap, s_gap + s_tol],
-                y=[p_min, p_nom, p_max],
+                x=[s_gap],
+                y=[p_nom],
                 mode='markers',
-                marker=dict(size=8, symbol=['triangle-right', 'circle', 'triangle-left'], color=color),
+                marker=dict(size=8, symbol=['circle'], color=color),
                 showlegend=False, hoverinfo='skip'
             ))
         
@@ -506,10 +506,10 @@ with tab_explore:
 
             # Markers
             fig_exp.add_trace(go.Scatter(
-                x=[e_gap - e_tol, e_gap, e_gap + e_tol],
-                y=[v_min, vn, v_max],
+                x=[e_gap],
+                y=[vn],
                 mode='markers',
-                marker=dict(size=8, symbol=['triangle-right', 'circle', 'triangle-left'], color=color),
+                marker=dict(size=8, symbol=['circle'], color=color),
                 showlegend=False, hoverinfo='skip'
             ))
 
