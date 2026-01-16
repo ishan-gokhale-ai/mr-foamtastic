@@ -5,25 +5,25 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
-APP_VERSION = "V6.4.1"
+APP_VERSION = "V6.5.0"
 
 # --- 0. LOOK AND FEEL ---
 
 st.markdown("""
     <style>
-    /* 1. Reset the sidebar padding to be clean but not zero */
+    /* 1. Reset the sidebar padding */
     [data-testid="stSidebarContent"] {
         padding-top: 1.5rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
 
-    /* 2. Set a consistent, small vertical gap between widgets */
+    /* 2. Vertical gap between widgets */
     [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
         gap: 0.75rem !important;
     }
 
-    /* 3. Style the labels to be closer to their inputs without overlapping */
+    /* 3. Style labels */
     [data-testid="stSidebar"] label {
         margin-bottom: -5px !important;
         font-size: 0.85rem !important;
@@ -31,70 +31,54 @@ st.markdown("""
         color: #31333F !important;
     }
 
-    /* 4. Tighten the Divider lines */
+    /* 4. Divider lines */
     [data-testid="stSidebar"] hr {
         margin-top: 0.5rem !important;
         margin-bottom: 0.5rem !important;
     }
 
-    /* 5. Fix the Radio Button alignment */
-    /* This ensures the 'Calculation Mode' doesn't stack on top of its label */
+    /* 5. Radio Button alignment */
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"] + div {
         margin-top: 5px !important;
     }
 
-    /* 6. Improve the Logo/Header spacing at the very top */
+    /* 6. Header spacing */
     [data-testid="stSidebar"] h2 {
         padding-top: 0.5rem !important;
         margin-bottom: 0rem !important;
     }
-    /* 7. Remove the massive gap at the top of the main page */
+    
+    /* 7. Main page padding */
     [data-testid="stAppViewBlockContainer"] {
-        padding-top: 2rem !important; /* Standard professional padding */
+        padding-top: 2rem !important;
         padding-left: 3rem !important;
         padding-right: 3rem !important;
     }
 
-    /* 8. Hide the default Streamlit header bar (removes top white strip) */
+    /* 8. Hide header bar */
     [data-testid="stHeader"] {
         background: rgba(0,0,0,0);
         height: 0rem !important;
     }
 
-    /* 9. Tighten the Tab styling */
+    /* 9. Tab styling */
     [data-testid="stTab"] {
         font-weight: 700 !important;
         font-size: 1rem !important;
     }
 
-    /* 10. Fix sidebar logo alignment so it sits flush with the top */
+    /* 10. Sidebar top alignment */
     [data-testid="stSidebarContent"] {
         padding-top: 1rem !important;
     }
-    /* 11. Force Table Headers to align Left */
+    
+    /* 11. Force Headers Left */
     [data-testid="stDataFrame"] th,
     [data-testid="stDataEditor"] th,
     div[data-testid="stColumnHeader"] {
         text-align: left !important;
         justify-content: flex-start !important;
     }
-    
-    /* 12. Force ALL Table Cells to align Left (Numbers & Text) */
-    /* Target the cell container */
-    [data-testid="stDataFrame"] td,
-    [data-testid="stDataEditor"] td {
-        text-align: left !important;
-    }
-    
-    /* Target the inner flex container (Crucial for Numbers) */
-    [data-testid="stDataFrame"] td > div,
-    [data-testid="stDataEditor"] td > div,
-    [data-testid="stDataFrame"] [role="gridcell"] > div,
-    [data-testid="stDataEditor"] [role="gridcell"] > div {
-        justify-content: flex-start !important;
-        text-align: left !important;
-    }
-
     </style>
     """, unsafe_allow_html=True)
 
@@ -110,20 +94,17 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First run, show input for password.
         st.set_page_config(page_title="Mr. Foamtastic Login", page_icon="🔒")
         st.title(f"🔒 Mr. Foamtastic {APP_VERSION}")
         st.text_input("Enter Team Password", type="password", on_change=password_entered, key="password")
         st.info("Contact Ishan Gokhale for access.")
         return False
     elif not st.session_state["password_correct"]:
-        # Password not correct, show input + error.
         st.set_page_config(page_title="Mr. Foamtastic Login", page_icon="🔒")
         st.text_input("Enter Team Password", type="password", on_change=password_entered, key="password")
         st.error("😕 Password incorrect")
         return False
     else:
-        # Password correct.
         return True
 
 if not check_password():
@@ -137,20 +118,40 @@ if 'export_basket' not in st.session_state:
 if 'explore_stage' not in st.session_state:
     st.session_state['explore_stage'] = []
 
-# --- 3. DATA LOADING ---
+# --- 3. DATA LOADING (With Fallback) ---
 @st.cache_data
-def load_data():
+def load_data(uploaded_file=None):
     try:
-        # Simple path because GitHub and Streamlit Cloud keep files together
-        df = pd.read_csv("foams.csv")
-        df['Conductive'] = df['Conductive'].astype(str).str.upper().map({'YES': True, 'NO': False})
-        df['PSA'] = df['PSA'].astype(str).str.upper().map({'YES': True, 'NO': False})
+        if uploaded_file:
+            df = pd.read_csv(uploaded_file)
+        else:
+            # Try local file
+            df = pd.read_csv("foams.csv")
+            
+        # Clean data
+        if 'Conductive' in df.columns:
+            df['Conductive'] = df['Conductive'].astype(str).str.upper().map({'YES': True, 'NO': False})
+        if 'PSA' in df.columns:
+            df['PSA'] = df['PSA'].astype(str).str.upper().map({'YES': True, 'NO': False})
         return df
+    except FileNotFoundError:
+        return None 
     except Exception as e:
-        st.error(f"Error loading foams.csv: {e}")
+        st.error(f"Error loading data: {e}")
         return pd.DataFrame()
 
+# Try loading local first
 df = load_data()
+
+# If local failed, ask for upload in Sidebar
+if df is None:
+    with st.sidebar:
+        st.warning("⚠️ 'foams.csv' not found.")
+        uploaded_csv = st.file_uploader("Upload Foams Database", type="csv")
+        if uploaded_csv:
+            df = load_data(uploaded_csv)
+        else:
+            st.stop() # Stop execution until file is provided
 
 # --- 4. CORE CALCULATION ENGINE ---
 def get_value_with_status(row, gap, mode, area_val, allow_extrapolation=False):
@@ -171,11 +172,6 @@ def get_value_with_status(row, gap, mode, area_val, allow_extrapolation=False):
     stress = float(f(gap))
     val = stress if mode == "Stress (MPa)" else (stress * area_val)
     return val, ("Extrapolated" if is_extrapolated else "Interpolated")
-
-def format_val(val, status, mode):
-    prec = 3 if "Stress" in mode or "mm" in mode else 2
-    formatted = f"{val:.{prec}f}"
-    return f"🔴 {formatted}" if status == "Extrapolated" else formatted
 
 # --- 5. SIDEBAR ---
 with st.sidebar:
@@ -275,9 +271,11 @@ with tab_select:
             })
 
     if results:
-        # --- 3. Full-Width Performance Chart ---
+        # --- 3. Full-Width Performance Chart (With Markers) ---
         st.subheader("Performance Visualization")
         fig_sel = go.Figure()
+        
+        # Tolerance Zone
         fig_sel.add_vrect(
             x0=s_gap - s_tol, x1=s_gap + s_tol, 
             fillcolor="rgba(100,100,100,0.1)", line_width=0, 
@@ -285,9 +283,31 @@ with tab_select:
         )
         
         px_range = np.linspace(0.1, 4.0, 200)
-        for r in results:
-            py = [get_value_with_status(r['row_ref'], tx, unit_mode, area, False)[0] for tx in px_range]
-            fig_sel.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=r['Model'], mode='lines'))
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+        
+        for i, r in enumerate(results):
+            color = colors[i % len(colors)]
+            row_data = r['row_ref']
+            
+            # Curve
+            py = [get_value_with_status(row_data, tx, unit_mode, area, False)[0] for tx in px_range]
+            fig_sel.add_trace(go.Scatter(
+                x=px_range, y=[y if y > 0 else None for y in py], 
+                name=r['Model'], mode='lines', line=dict(color=color)
+            ))
+
+            # Markers (Min, Nom, Max)
+            p_nom, _ = get_value_with_status(row_data, s_gap, unit_mode, area, True)
+            p_min, _ = get_value_with_status(row_data, s_gap - s_tol, unit_mode, area, True)
+            p_max, _ = get_value_with_status(row_data, s_gap + s_tol, unit_mode, area, True)
+
+            fig_sel.add_trace(go.Scatter(
+                x=[s_gap - s_tol, s_gap, s_gap + s_tol],
+                y=[p_min, p_nom, p_max],
+                mode='markers',
+                marker=dict(size=8, symbol=['triangle-right', 'circle', 'triangle-left'], color=color),
+                showlegend=False, hoverinfo='skip'
+            ))
         
         fig_sel.update_layout(
             template="plotly_white", height=400, 
@@ -301,18 +321,23 @@ with tab_select:
 
         st.divider()
 
-        # --- 4. Interactive Data Table ---
+        # --- 4. Interactive Data Table (Left Aligned via Strings) ---
         st.subheader("Compatible Foams")
-        st.caption(f"Values marked ⚠️ are extrapolated. Units")
+        st.caption(f"Values marked ⚠️ are extrapolated. Units: {unit_mode}")
+        
+        # Display DF: Convert numbers to strings for Left Alignment
+        display_df = pd.DataFrame(results).drop(columns=['row_ref'])
+        display_df['Thk'] = display_df['Thk'].map('{:.3f}'.format)
+        display_df[f"Nom {mode_label}"] = display_df[f"Nom {mode_label}"].map('{:.3f}'.format)
         
         edited_df = st.data_editor(
-            pd.DataFrame(results).drop(columns=['row_ref']), 
+            display_df, 
             column_config={
                 "Foam Name": st.column_config.TextColumn("Foam Name (Editable)", width="medium"),
-                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
-                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} at Nom Gap ({unit_label})", format="%.3f"),
-                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min Gap ({unit_label})"),
-                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max Gap ({unit_label})"),
+                "Thk": st.column_config.TextColumn("Thk (mm)"), # TextColumn = Left Aligned
+                f"Nom {mode_label}": st.column_config.TextColumn(f"{mode_label} at Nom ({unit_label})"),
+                "Min Gap Val": st.column_config.TextColumn(f"{mode_label} at Min ({unit_label})"),
+                "Max Gap Val": st.column_config.TextColumn(f"{mode_label} at Max ({unit_label})"),
                 "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
             },
             disabled=["Vendor", "Model", "Thk", f"Nom {mode_label}", "Min Gap Val", "Max Gap Val"],
@@ -323,13 +348,11 @@ with tab_select:
 
         # --- 5. State-Safe Add Logic ---
         for i, row in edited_df.iterrows():
-            # Unique session state key for this row/search combo
-            add_key = f"added_{row['Model']}_{i}"
+            # Use results[i] to get the original FLOAT data, not the string display data
+            r_orig = results[i]
+            add_key = f"added_{r_orig['Model']}_{i}"
             
             if row["Add to Export"] and not st.session_state.get(add_key, False):
-                r_orig = results[i]
-                
-                # Check for duplicate in basket
                 if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
                     st.session_state['export_basket'].append({
                         "Foam": row["Foam Name"],
@@ -387,16 +410,13 @@ with tab_explore:
     df['Search_Label'] = df['Manufacturer'] + " | " + df['Model']
     search_options = sorted(df['Search_Label'].unique().tolist())
     
-    # Initialize widget state if missing
     if 'search_widget' not in st.session_state:
         st.session_state['search_widget'] = [
             f"{item['row']['Manufacturer']} | {item['model']}" 
             for item in st.session_state['explore_stage']
         ]
 
-    # --- 1. TOP INPUTS (Layout: Search on top, Controls below) ---
-    
-    # ROW 1: Search Bar (Full Width)
+    # --- 1. TOP INPUTS ---
     st.multiselect(
         "Search & Add Foams", 
         search_options, 
@@ -405,27 +425,22 @@ with tab_explore:
         placeholder="Type vendor or model (e.g. 'Rogers' or '4701')..."
     )
     
-    st.write("") # Vertical spacer
+    st.write("") 
 
-    # ROW 2: Controls (Gap, Tolerance, Clear)
     c_gap, c_tol, c_spacer, c_clear = st.columns([1, 1, 3, 1])
-    
     with c_gap:
         e_gap = st.number_input("Nominal Gap (mm)", value=1.000, step=0.010, format="%.3f", key="egap_global")
-    
     with c_tol:
         e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
-    
     with c_clear:
-        st.write("") # Spacers to push button down to align with input boxes
         st.write("") 
-        # THE FIX: We use on_click=clear_stage instead of 'if st.button'
+        st.write("") 
         st.button("🗑️ Clear Stage", use_container_width=True, on_click=clear_stage)
 
     # --- 2. VISUALIZATION & RESULTS ---
     if st.session_state['explore_stage']:
         
-        # --- A. Performance Chart ---
+        # --- A. Performance Chart (With Markers) ---
         st.subheader("Performance Visualization")
         
         fig_exp = go.Figure()
@@ -437,8 +452,10 @@ with tab_explore:
 
         px_range = np.linspace(0.1, 4.0, 200)
         explore_results = []
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
         
-        for item in st.session_state['explore_stage']:
+        for i, item in enumerate(st.session_state['explore_stage']):
+            color = colors[i % len(colors)]
             row = item['row']
             vn, sn = get_value_with_status(row, e_gap, unit_mode, area, False)
             v_min, s_min = get_value_with_status(row, e_gap - e_tol, unit_mode, area, True)
@@ -454,8 +471,21 @@ with tab_explore:
                 "Add to Export": False, "row_ref": row
             })
 
+            # Curve
             py = [get_value_with_status(row, tx, unit_mode, area, False)[0] for tx in px_range]
-            fig_exp.add_trace(go.Scatter(x=px_range, y=[y if y > 0 else None for y in py], name=item['custom_name'], mode='lines'))
+            fig_exp.add_trace(go.Scatter(
+                x=px_range, y=[y if y > 0 else None for y in py], 
+                name=item['custom_name'], mode='lines', line=dict(color=color)
+            ))
+
+            # Markers
+            fig_exp.add_trace(go.Scatter(
+                x=[e_gap - e_tol, e_gap, e_gap + e_tol],
+                y=[v_min, vn, v_max],
+                mode='markers',
+                marker=dict(size=8, symbol=['triangle-right', 'circle', 'triangle-left'], color=color),
+                showlegend=False, hoverinfo='skip'
+            ))
 
         fig_exp.update_layout(
             template="plotly_white", height=450, margin=dict(l=10, r=10, t=30, b=10),
@@ -466,15 +496,19 @@ with tab_explore:
         
         st.divider()
 
-        # --- B. Results Table ---
+        # --- B. Results Table (Left Aligned via Strings) ---
         st.subheader("Simulation Results")
         
+        exp_display_df = pd.DataFrame(explore_results).drop(columns=['row_ref'])
+        exp_display_df['Thk'] = exp_display_df['Thk'].map('{:.3f}'.format)
+        exp_display_df[f"Nom {mode_label}"] = exp_display_df[f"Nom {mode_label}"].map('{:.3f}'.format)
+
         edited_exp_df = st.data_editor(
-            pd.DataFrame(explore_results).drop(columns=['row_ref']),
+            exp_display_df,
             column_config={
                 "Foam Name": st.column_config.TextColumn("Foam Name", width="medium"),
-                "Thk": st.column_config.NumberColumn("Thk (mm)", format="%.3f"),
-                f"Nom {mode_label}": st.column_config.NumberColumn(f"{mode_label} @ {e_gap:.2f}mm", format="%.3f"),
+                "Thk": st.column_config.TextColumn("Thk (mm)"),
+                f"Nom {mode_label}": st.column_config.TextColumn(f"{mode_label} @ {e_gap:.2f}mm"),
                 "Min Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap - e_tol:.2f}mm"),
                 "Max Gap Val": st.column_config.TextColumn(f"{mode_label} @ {e_gap + e_tol:.2f}mm"),
                 "Add to Export": st.column_config.CheckboxColumn("Add", default=False)
@@ -485,9 +519,10 @@ with tab_explore:
 
         # --- C. Export Logic ---
         for i, row in edited_exp_df.iterrows():
-            add_key = f"exp_added_{row['Model']}_{i}"
+            r_orig = explore_results[i] # Grab raw data
+            add_key = f"exp_added_{r_orig['Model']}_{i}"
+            
             if row["Add to Export"] and not st.session_state.get(add_key, False):
-                r_orig = explore_results[i]
                 if not any(item['Model'] == r_orig['Model'] and item['Foam'] == row['Foam Name'] for item in st.session_state['export_basket']):
                     st.session_state['export_basket'].append({
                         "Foam": row["Foam Name"], "Vendor": r_orig['Vendor'], "Model": r_orig['Model'],
@@ -507,8 +542,6 @@ with tab_export:
     st.header("Finalize Selection Report")
     
     if st.session_state['export_basket']:
-        # We wrap the editor in a form or use a specific key to prevent instant re-runs
-        # num_rows="dynamic" allows the user to select a row and hit 'Delete'
         edited_basket = st.data_editor(
             pd.DataFrame(st.session_state['export_basket']),
             use_container_width=True,
@@ -517,14 +550,12 @@ with tab_export:
             key="export_editor_final"
         )
 
-        # Update the basket only if the number of rows changed (a deletion happened)
         if len(edited_basket) != len(st.session_state['export_basket']):
             st.session_state['export_basket'] = edited_basket.to_dict('records')
             st.rerun()
 
         st.divider()
         
-        # Download Button
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             pd.DataFrame(st.session_state['export_basket']).to_excel(writer, index=False)
