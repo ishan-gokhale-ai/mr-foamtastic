@@ -297,7 +297,6 @@ with tab_select:
 
     if results:
         # --- 3. Full-Width Performance Chart (With Markers) ---
-        st.subheader("Performance Visualization")
         fig_sel = go.Figure()
         
         # Tolerance Zone
