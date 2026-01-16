@@ -14,7 +14,7 @@ st.markdown("""
     /* 1. Reset the sidebar padding and pull content up */
     [data-testid="stSidebarContent"] {
         padding-top: 0rem !important;
-        margin-top: -20px !important; /* Pulls everything up past the default limit */
+        margin-top: -35px !important; /* Pulls content way up */
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -56,9 +56,16 @@ st.markdown("""
         margin-top: 0rem !important;
     }
     
-    /* 8. CLEAN HEADER (Keeps the sidebar arrow visible) */
+    /* 8. CLEAN HEADER (Fixes missing arrow) */
     header[data-testid="stHeader"] {
-        background-color: rgba(0,0,0,0); /* Transparent background */
+        background-color: transparent !important;
+        z-index: 99999 !important; /* Forces the arrow to sit ABOVE the content */
+    }
+    
+    /* Ensure the arrow button is specifically visible and colored */
+    [data-testid="stSidebarCollapsedControl"] {
+        display: block !important;
+        color: #31333F !important;
     }
     
     /* Hide the colored top decoration line */
@@ -70,7 +77,6 @@ st.markdown("""
     [data-testid="stToolbar"] {
         display: none;
     }
-
     
     /* 9. Tighten Title Spacing */
     h1 {
@@ -93,7 +99,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-
 
 # --- 1. PASSWORD GATE ---
 def check_password():
@@ -234,7 +239,7 @@ with st.sidebar:
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
 # Banner
-col1, col2, col3 = st.columns([1, 5, 1]) 
+col1, col2, col3 = st.columns([1, 3, 1]) 
 with col2:
     st.image("banner.png", use_container_width=True)
 
