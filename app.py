@@ -11,9 +11,10 @@ APP_VERSION = "V6.5.0"
 
 st.markdown("""
     <style>
-    /* 1. Reset the sidebar padding */
+    /* 1. Reset the sidebar padding and pull content up */
     [data-testid="stSidebarContent"] {
         padding-top: 0rem !important;
+        margin-top: -20px !important; /* Pulls everything up past the default limit */
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
@@ -55,10 +56,21 @@ st.markdown("""
         margin-top: 0rem !important;
     }
     
-    /* 8. KILL THE HEADER & ICONS */
+    /* 8. CLEAN HEADER (Keeps the sidebar arrow visible) */
     header[data-testid="stHeader"] {
-        display: none !important;
+        background-color: rgba(0,0,0,0); /* Transparent background */
     }
+    
+    /* Hide the colored top decoration line */
+    [data-testid="stDecoration"] {
+        display: none;
+    }
+
+    /* Hide the "Deploy" and "..." menu on the right */
+    [data-testid="stToolbar"] {
+        display: none;
+    }
+
     
     /* 9. Tighten Title Spacing */
     h1 {
@@ -222,7 +234,7 @@ with st.sidebar:
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
 # Banner
-col1, col2, col3 = st.columns([1, 2, 1]) 
+col1, col2, col3 = st.columns([1, 5, 1]) 
 with col2:
     st.image("banner.png", use_container_width=True)
 
