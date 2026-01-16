@@ -343,10 +343,7 @@ with tab_select:
         )
         st.plotly_chart(fig_sel, use_container_width=True)
 
-        st.divider()
-
         # --- 4. Interactive Data Table (Left Aligned via Strings) ---
-        st.subheader("Compatible Foams")
         st.caption("Values marked ⚠️ are extrapolated")
         
         # Display DF: Convert numbers to strings for Left Alignment
@@ -520,10 +517,7 @@ with tab_explore:
         )
         st.plotly_chart(fig_exp, use_container_width=True)
         
-        st.divider()
-
         # --- B. Results Table (Left Aligned via Strings) ---
-        st.subheader("Simulation Results")
         
         exp_display_df = pd.DataFrame(explore_results).drop(columns=['row_ref'])
         exp_display_df['Thk'] = exp_display_df['Thk'].map('{:.3f}'.format)
