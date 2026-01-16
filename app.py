@@ -177,7 +177,7 @@ def get_value_with_status(row, gap, mode, area_val, allow_extrapolation=False):
 # --- 5. SIDEBAR ---
 with st.sidebar:
     # 1. Header & Branding
-    st.image("logo.png", use_container_width=True)
+    # st.image("logo.png", use_container_width=True)
     st.caption(f"{APP_VERSION} | #Slack Ishan Gokhale")
     st.divider()
 
@@ -221,13 +221,14 @@ with st.sidebar:
 
 # --- 6. TABS (SELECT, EXPLORE, EXPORT) ---
 
-# === CHANGE: Main Title moved OUT of the tab to fill the top gap ===
-st.title("Foam Recommendation Engine") 
+# Banner
+col1, col2, col3 = st.columns([1, 2, 1]) 
+with col2:
+    st.image("banner.png", use_container_width=True)
 
 tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
 
 with tab_select:
-    # Removed st.header() from here since it's now at the top
     st.write("") # Small spacer
     
     # --- 1. Top Input Row ---
