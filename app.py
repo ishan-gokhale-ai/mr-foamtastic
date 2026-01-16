@@ -251,7 +251,7 @@ with tab_select:
     st.caption("Enter key design parameters for foam recommendations")
     
     # --- 1. Top Input Row ---
-    s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
+    s_col1, s_col2, s_col3, s_colSpacer = st.columns([1, 1, 1, 1])
     with s_col1:
         s_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="sgap_s")
     with s_col2:
