@@ -452,12 +452,12 @@ with tab_explore:
 
         st.write("")
 
-        st.multiselect(
-        "Foam name", 
-        search_options, 
-        key="search_widget", 
-        on_change=update_explore_stage,
-        placeholder="Type vendor or model (e.g. 'Poron' or '4701')..."
+    st.multiselect(
+    "Foam name", 
+    search_options, 
+    key="search_widget", 
+    on_change=update_explore_stage,
+    placeholder="Type vendor or model (e.g. 'Poron' or '4701')..."
     )
 
     # --- 2. VISUALIZATION & RESULTS ---
