@@ -438,17 +438,8 @@ with tab_explore:
         ]
 
     # --- 1. TOP INPUTS ---
-    st.multiselect(
-        "Search & Add Foams", 
-        search_options, 
-        key="search_widget", 
-        on_change=update_explore_stage,
-        placeholder="Type vendor or model (e.g. 'Poron' or '4701')..."
-    )
     
-    st.write("") 
-
-    c_gap, c_tol, c_mode, c_spacer, c_clear = st.columns([1, 1, 1, 2, 1])
+    c_gap, c_tol, c_mode, c_clear = st.columns([1, 1, 1, 1])
     with c_gap:
         e_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="egap_global")
     with c_tol:
@@ -457,8 +448,17 @@ with tab_explore:
         st.metric("Calculation Mode", unit_mode.split()[0], delta="Active")
     with c_clear:
         st.write("") 
-        st.write("") 
         st.button("🗑️ Clear Stage", use_container_width=True, on_click=clear_stage)
+
+        st.write("")
+
+        st.multiselect(
+        "Foam name", 
+        search_options, 
+        key="search_widget", 
+        on_change=update_explore_stage,
+        placeholder="Type vendor or model (e.g. 'Poron' or '4701')..."
+    )
 
     # --- 2. VISUALIZATION & RESULTS ---
     if st.session_state['explore_stage']:
