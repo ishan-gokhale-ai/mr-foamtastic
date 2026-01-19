@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
-APP_VERSION = "V6.7.0"
+APP_VERSION = "V7.0.0"
 
 # --- 0. LOOK AND FEEL ---
 st.markdown("""
@@ -177,7 +177,10 @@ with st.sidebar:
 col1, col2, col3 = st.columns([1, 3, 1]) 
 with col2: st.image("banner.png", use_container_width=True)
 
-tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", "EXPORT"])
+basket_count = len(st.session_state['export_basket'])
+export_label = f"EXPORT ({basket_count})" if basket_count > 0 else "EXPORT"
+tab_select, tab_explore, tab_export = st.tabs(["SELECT", "EXPLORE", export_label])
+
 colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 # --- TAB : SELECT ---
@@ -266,6 +269,7 @@ with tab_select:
                     "Max Gap (mm)": round(s_gap + s_tol, 3), f"Max Gap {unit_mode}": r_orig[f"{mode_label} (max gap)"]
                 })
                 st.session_state[add_key] = True
+                st.rerun()
             elif not row["Add to Export"]: st.session_state[add_key] = False
 
 # --- TAB : EXPLORE ---
@@ -351,20 +355,59 @@ with tab_explore:
                     "Max Gap (mm)": round(e_gap + e_tol, 3), f"Max Gap {unit_mode}": r_orig[f"{mode_label} (max gap)"]
                 })
                 st.session_state[add_key] = True
+                st.rerun()
             elif not row["Add to Export"]: st.session_state[add_key] = False
 
 # --- TAB : EXPORT ---
 with tab_export:
     if st.session_state['export_basket']:
-        edited_basket = st.data_editor(pd.DataFrame(st.session_state['export_basket']), use_container_width=True, hide_index=True, num_rows="dynamic", key="export_editor_final")
+        # Create a copy for display that we will force to be numeric
+        df_display = pd.DataFrame(st.session_state['export_basket'])
+        
+        # Target the stress/force columns that currently contain the "⚠️" string
+        cols_to_align = [f"Min Gap {unit_mode}", f"Max Gap {unit_mode}"]
+        
+        for col in cols_to_align:
+            if col in df_display.columns:
+                # Remove warning icon/space and convert to float 
+                # This triggers Streamlit's automatic right-alignment for numbers
+                df_display[col] = (
+                    df_display[col]
+                    .astype(str)
+                    .str.replace("⚠️ ", "", regex=False)
+                    .astype(float)
+                )
+
+        # Display the data editor with the numeric-only columns
+        edited_basket = st.data_editor(
+            df_display, 
+            use_container_width=True, 
+            hide_index=True, 
+            num_rows="dynamic", 
+            key="export_editor_final"
+        )
+
+        # Sync changes back to session state if rows are deleted/edited
         if len(edited_basket) != len(st.session_state['export_basket']):
             st.session_state['export_basket'] = edited_basket.to_dict('records')
             st.rerun()
+
         st.divider()
+        
+        # Prepare the Excel download using the original basket (to keep warnings)
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer: pd.DataFrame(st.session_state['export_basket']).to_excel(writer, index=False)
-        st.download_button("📥 Download Excel Report", output.getvalue(), "Foam_Report.xlsx", type="primary")
-        if st.button("🗑️ Clear Entire Basket"):
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer: 
+            pd.DataFrame(st.session_state['export_basket']).to_excel(writer, index=False)
+        
+        st.download_button(
+            label="📥 Download Excel Report",
+            data=output.getvalue(),
+            file_name="Foam_Report.xlsx",
+            type="primary"
+        )
+
+        if st.button("🗑️ Clear"):
             st.session_state['export_basket'] = []
             st.rerun()
-    else: st.info("Basket is empty.")
+    else: 
+        st.info("Basket is empty.")
