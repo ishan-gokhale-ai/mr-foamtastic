@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 import plotly.graph_objects as go
 from io import BytesIO
 
-APP_VERSION = "V6.6.0"
+APP_VERSION = "V6.7.0"
 
 # --- 0. LOOK AND FEEL ---
 st.markdown("""
@@ -184,7 +184,7 @@ colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e3
 with tab_select:
     s_col1, s_col2, s_col3 = st.columns([1, 1, 1])
     with s_col1: s_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="sgap_s")
-    with s_col2: s_tol = st.number_input("Gap Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
+    with s_col2: s_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.010, format="%.3f", key="stol_s")
     
     mask = (df['Manufacturer'].isin(sel_mfrs)) & (df['thickness'] >= t_min_in) & (df['thickness'] <= t_max_in)
     if want_cond: mask &= (df['Conductive'] == True)
@@ -201,10 +201,10 @@ with tab_select:
             v_max, s_max = get_value_with_status(row, s_gap + s_tol, unit_mode, area, True)
             results.append({
                 "Foam Name": "Enter custom name...", 
-                "Vendor": row['Manufacturer'], "Model": row['Model'], "Thk": row['thickness'],
+                "Model": row['Model'], "Thk": row['thickness'],
                 f"Nom {mode_label}": vn, 
-                "Min Gap Val": f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}", 
-                "Max Gap Val": f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}", 
+                f"{mode_label} (min gap)": f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}", 
+                f"{mode_label} (max gap)": f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}", 
                 "row_ref": row, "Add to Export": False
             })
 
@@ -239,10 +239,11 @@ with tab_select:
         fig_sel.add_vline(x=s_gap, line_dash="dash", line_color="#888", annotation_text="NOMINAL", annotation_position="top")
 
         fig_sel.update_layout(
-            template="plotly_white", height=400, 
+            template="plotly_white", height=600, 
             xaxis=dict(range=[x_start, x_end], title="Compressed thickness (mm)"), 
             yaxis=dict(rangemode="tozero", title=unit_mode), 
-            hovermode="x unified"
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_sel, use_container_width=True)
 
@@ -259,17 +260,17 @@ with tab_select:
                 raw_name = str(row.get("Foam Name", ""))
                 final_name = raw_name if raw_name not in ["Enter custom name...", "", "None"] else ""
                 st.session_state['export_basket'].append({
-                    "Foam": final_name, "Vendor": r_orig['Vendor'], "Model": r_orig['Model'], "Thk (mm)": round(r_orig['Thk'], 3),
+                    "Foam": final_name, "Model": r_orig['Model'], "Thk (mm)": round(r_orig['Thk'], 3),
                     "Nom Gap (mm)": round(s_gap, 3), f"Nom {unit_mode}": round(r_orig[f"Nom {mode_label}"], 3),
-                    "Min Gap (mm)": round(s_gap - s_tol, 3), f"Min Gap {unit_mode}": r_orig['Min Gap Val'], 
-                    "Max Gap (mm)": round(s_gap + s_tol, 3), f"Max Gap {unit_mode}": r_orig['Max Gap Val']
+                    "Min Gap (mm)": round(s_gap - s_tol, 3), f"Min Gap {unit_mode}": r_orig[f"{mode_label} (min gap)"], 
+                    "Max Gap (mm)": round(s_gap + s_tol, 3), f"Max Gap {unit_mode}": r_orig[f"{mode_label} (max gap)"]
                 })
                 st.session_state[add_key] = True
             elif not row["Add to Export"]: st.session_state[add_key] = False
 
 # --- TAB : EXPLORE ---
 with tab_explore:
-    c_gap, c_tol, c_clear = st.columns([1, 1, 1])
+    c_gap, c_tol, c_clear = st.columns([1, 1, 1], vertical_alignment="bottom")
     with c_gap: e_gap = st.number_input("Nominal Gap (mm)", value=0.400, step=0.010, format="%.3f", key="egap_global")
     with c_tol: e_tol = st.number_input("Tolerance (± mm)", value=0.100, step=0.005, format="%.3f", key="etol_global")
     with c_clear: st.button("🗑️ Clear Stage", on_click=clear_stage, use_container_width=True)
@@ -294,10 +295,10 @@ with tab_explore:
             
             explore_results.append({
                 "Foam Name": "Enter custom name...", 
-                "Vendor": item_row['Manufacturer'], "Model": item['model'], "Thk": item_row['thickness'],
+                "Model": item['model'], "Thk": item_row['thickness'],
                 f"Nom {mode_label}": vn, 
-                "Min Gap Val": f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}", 
-                "Max Gap Val": f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}", 
+                f"{mode_label} (min gap)": f"⚠️ {v_min:.3f}" if s_min == "Extrapolated" else f"{v_min:.3f}", 
+                f"{mode_label} (max gap)": f"⚠️ {v_max:.3f}" if s_max == "Extrapolated" else f"{v_max:.3f}", 
                 "row_ref": item_row, "Add to Export": False
             })
             
@@ -323,10 +324,11 @@ with tab_explore:
 
         fig_exp.update_layout(
             template="plotly_white", 
-            height=450, 
+            height=600, 
             xaxis=dict(range=[ex_start, ex_end], title="Compressed thickness (mm)"), 
             yaxis=dict(rangemode="tozero", title=unit_mode), 
-            hovermode="x unified"
+            hovermode="x unified",
+            legend=dict(orientation="h", yanchor="top", y=-0.3, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_exp, use_container_width=True)
         
@@ -343,10 +345,10 @@ with tab_explore:
                 raw_name = str(row.get("Foam Name", ""))
                 final_name = raw_name if raw_name not in ["Enter custom name...", "", "None"] else ""
                 st.session_state['export_basket'].append({
-                    "Foam": final_name, "Vendor": r_orig['Vendor'], "Model": r_orig['Model'], "Thk (mm)": round(r_orig['Thk'], 3),
+                    "Foam": final_name, "Model": r_orig['Model'], "Thk (mm)": round(r_orig['Thk'], 3),
                     "Nom Gap (mm)": round(e_gap, 3), f"Nom {unit_mode}": round(r_orig[f"Nom {mode_label}"], 3),
-                    "Min Gap (mm)": round(e_gap - e_tol, 3), f"Min Gap {unit_mode}": r_orig['Min Gap Val'], 
-                    "Max Gap (mm)": round(e_gap + e_tol, 3), f"Max Gap {unit_mode}": r_orig['Max Gap Val']
+                    "Min Gap (mm)": round(e_gap - e_tol, 3), f"Min Gap {unit_mode}": r_orig[f"{mode_label} (min gap)"], 
+                    "Max Gap (mm)": round(e_gap + e_tol, 3), f"Max Gap {unit_mode}": r_orig[f"{mode_label} (max gap)"]
                 })
                 st.session_state[add_key] = True
             elif not row["Add to Export"]: st.session_state[add_key] = False
